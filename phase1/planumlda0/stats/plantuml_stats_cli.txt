@@ -1,0 +1,45 @@
+[2025-10-20 03:23:59] INFO: ============================================================
+[2025-10-20 03:23:59] INFO: Processing Complete!
+[2025-10-20 03:23:59] INFO: ============================================================
+[2025-10-20 03:23:59] INFO: Total time: 4639.9 seconds (77.3 minutes)
+[2025-10-20 03:23:59] INFO: Processing speed: 79.2 blobs/second
+[2025-10-20 03:23:59] INFO: 
+[2025-10-20 03:23:59] INFO: Results:
+[2025-10-20 03:23:59] INFO:   Valid PlantUML blobs:   202,106 (55.0%)
+[2025-10-20 03:23:59] INFO:   Invalid blobs:          163,802 (44.6%)
+[2025-10-20 03:23:59] INFO:   Error blobs:            1,642 (0.4%)
+[2025-10-20 03:23:59] INFO: 
+[2025-10-20 03:23:59] INFO: Output files:
+[2025-10-20 03:23:59] INFO:   Valid content:  /data/play/vopolva/plantuml_extraction/valid_plantuml_content.gz
+[2025-10-20 03:23:59] INFO:   Invalid blobs:  /data/play/vopolva/plantuml_extraction/invalid_blobs.txt
+[2025-10-20 03:23:59] INFO:   Error blobs:    /data/play/vopolva/plantuml_extraction/error_blobs.txt
+[2025-10-20 03:23:59] INFO:   Statistics:     /data/play/vopolva/plantuml_extraction/plantuml_stats.json
+[2025-10-20 03:23:59] INFO: ============================================================
+[2025-10-20 03:23:59] INFO: 
+[2025-10-20 03:23:59] INFO: Preview of valid PlantUML content (first 3 entries):
+[2025-10-20 03:23:59] INFO: ------------------------------------------------------------
+[2025-10-20 03:23:59] INFO: 00000fade04e8301f0074863dd2a862606f2def7 | /docs/frames/web.uml
+[2025-10-20 03:23:59] INFO:   Content preview: @startuml
+frame "web" {
+  interface "bookmarks"
+  interface "jekyll:ui"
+}
+@enduml
+
+...
+[2025-10-20 03:23:59] INFO: 000084f52fe6f2bcfc22549e167682d84ac2a9dc | /sprites/datagrip.puml
+[2025-10-20 03:23:59] INFO:   Content preview: @startuml
+sprite $datagrip [51x51/16] {
+400000000000000000000000000006400000000000000000000
+66666661...
+[2025-10-20 03:23:59] INFO: 0000f0f410ff2d77ed0493975aa00332baca22e3 | /sre/app-insight.puml
+[2025-10-20 03:23:59] INFO:   Content preview: @startuml Application Insights
+
+[📱 mana]
+[📱 sandbox]
+
+[📱 mana] -[hidden] [📱 sandbox]
+
+package AppIns...
+[2025-10-20 03:23:59] INFO: ------------------------------------------------------------
+indiehacker@da0:/data/play/vopolva>client_loop: send disconnect: Broken pipe

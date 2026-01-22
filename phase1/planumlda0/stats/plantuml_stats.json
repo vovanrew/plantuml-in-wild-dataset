@@ -1,0 +1,11 @@
+{
+  "total_blobs": 367550,
+  "valid_blobs": 202106,
+  "invalid_blobs": 163802,
+  "error_blobs": 1642,
+  "duration_seconds": 4639.891377210617,
+  "duration_minutes": 77.33152295351029,
+  "blobs_per_second": 79.21521650383151,
+  "workers": 12,
+  "timestamp": "2025-10-20 03:23:59"
+}
