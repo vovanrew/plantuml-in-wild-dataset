@@ -280,7 +280,8 @@ def extract_features(clean_content: str) -> Dict[str, Any]:
         'has_autonumber': bool(re.search(r'\bautonumber\b', content_lower)),
         'has_divider': bool(re.search(r'={3,}', clean_content)),
         # Sequence message arrow pattern: Name->Name : message (require 1-2 dashes, not 3+)
-        'has_sequence_message': bool(re.search(r'\w+\s*-{1,2}>\s*\w+\s*:', clean_content)),
+        # Supports unquoted names, quoted names ("Name"), and creole names (:Name:)
+        'has_sequence_message': bool(re.search(r'(?:\w+|"[^"]+"|:[^:]+:)\s*-{1,2}>\s*(?:\w+|"[^"]+"|:[^:]+:)\s*:', clean_content)),
 
         # Class diagram features
         # Match both 'class Name' and 'class "Name"' with quotes
@@ -926,7 +927,12 @@ HIERARCHICAL_PENALTIES = {
         ('has_component_style', 0.8),
     ],
     'state': [],
-    'usecase': [],
+    'usecase': [
+        ('has_activate', 0.3),           # 70% penalty - activate is sequence-only
+        ('has_autonumber', 0.3),         # 70% penalty - autonumber is sequence-only
+        ('has_sequence_message', 0.2),   # 80% penalty - "A -> B : msg" pattern
+        ('has_alt_loop', 0.4),           # 60% penalty - alt/loop/opt/par
+    ],
     'object': [],
     'timing': [
         ('has_participant', 0.8),
