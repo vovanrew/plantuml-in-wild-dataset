@@ -269,7 +269,7 @@ def extract_bracket_components(
         \]                                      # closing bracket
         (?:\s*<<[^>]*>>)?                      # optional stereotype
         (?:\s*\#[a-zA-Z0-9]+)?                 # optional color
-        (?:\s+as\s+(?:"([^"]+)"|([a-zA-Z_$][a-zA-Z0-9_$]*)))?  # alias (groups 2, 3)
+        (?:\s+as\s+(?:"([^"]+)"|([\w.$]+)))?  # alias with dots/unicode (groups 2, 3)
     '''
 
     for match in re.finditer(bracket_pattern, content, re.MULTILINE | re.VERBOSE):
@@ -327,10 +327,10 @@ def extract_interface_notation(
         (?:
             "([^"]+)"                          # quoted name (group 1)
             |
-            ([a-zA-Z_$][a-zA-Z0-9_$]*)         # unquoted name (group 2)
+            ([\w.$]+)                          # unquoted name with dots/unicode (group 2)
         )
         (?:\s*<<[^>]*>>)?                      # optional stereotype
-        (?:\s+as\s+(?:"([^"]+)"|([a-zA-Z_$][a-zA-Z0-9_$]*)))?  # alias (groups 3, 4)
+        (?:\s+as\s+(?:"([^"]+)"|([\w.$]+)))?  # alias with dots/unicode (groups 3, 4)
     '''
 
     def add_interface(name: Optional[str], alias_quoted: Optional[str],
@@ -383,7 +383,7 @@ def extract_usecase_parentheses(
         ([^()*\n][^)\n]*?)                     # usecase name - not starting with * or (
         \)                                     # closing paren
         (?:\s+as\s+\(([^)]+)\))?               # optional alias in parens
-        (?:\s+as\s+([a-zA-Z_$][a-zA-Z0-9_$]*))?  # or plain alias
+        (?:\s+as\s+([\w.$]+))?                 # or plain alias with dots/unicode
     '''
 
     for match in re.finditer(usecase_pattern, content, re.MULTILINE | re.VERBOSE):
@@ -460,7 +460,7 @@ def extract_creole_actor(
         \s*
         :([^:\n;]+):                           # :name: - no colons, newlines, or semicolons inside
         (?!\s*;)                               # not followed by semicolon (activity syntax)
-        (?:\s+as\s+([a-zA-Z_$][a-zA-Z0-9_$]*))?  # optional alias
+        (?:\s+as\s+([\w.$]+))?                 # optional alias with dots/unicode
     '''
 
     for match in re.finditer(actor_pattern, content, re.MULTILINE | re.VERBOSE):
@@ -519,7 +519,7 @@ def extract_implicit(
         (?:
             "([^"]+)"                          # quoted left element (group 1)
             |
-            ([a-zA-Z_$][a-zA-Z0-9_$]*)         # unquoted left element (group 2)
+            ([\w.$]+)                          # unquoted left element with dots/unicode (group 2)
             |
             \(([^()*\n][^)\n]*)\)              # parenthesized usecase left (group 3)
             |
@@ -555,7 +555,7 @@ def extract_implicit(
         (?:
             "([^"]+)"                          # quoted right element (group 5)
             |
-            ([a-zA-Z_$][a-zA-Z0-9_$]*)         # unquoted right element (group 6)
+            ([\w.$]+)                          # unquoted right element with dots/unicode (group 6)
             |
             \(([^()*\n][^)\n]*)\)              # parenthesized usecase right (group 7)
             |
@@ -570,7 +570,7 @@ def extract_implicit(
         (?:
             "([^"]+)"                          # quoted left participant (group 1)
             |
-            ([a-zA-Z_$][a-zA-Z0-9_$]*)         # unquoted left participant (group 2)
+            ([\w.$]+)                          # unquoted left participant with dots/unicode (group 2)
         )
         \s*
         (<?-+>>?|<?\.+>?)                      # arrow (group 3)
@@ -578,7 +578,7 @@ def extract_implicit(
         (?:
             "([^"]+)"                          # quoted right participant (group 4)
             |
-            ([a-zA-Z_$][a-zA-Z0-9_$]*)         # unquoted right participant (group 5)
+            ([\w.$]+)                          # unquoted right participant with dots/unicode (group 5)
         )
         \s*:\s*                                # colon separator (sequence msg label)
     '''
