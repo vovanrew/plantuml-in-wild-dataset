@@ -2,7 +2,7 @@
 """
 Add Lines of Code (LOC) metrics to PlantUML classification JSON.
 
-This script reads a classification JSON file (output from classify_diagrams.py),
+This script reads a classification JSON file (output from classify_with_llm.py),
 counts LOC for each PUML file, and adds LOC metrics to the JSON output.
 
 LOC Definition: Non-blank, non-comment lines

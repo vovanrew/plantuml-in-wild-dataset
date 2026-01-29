@@ -2,7 +2,7 @@
 Shared preprocessing utilities for PlantUML analysis scripts.
 
 This module provides consistent content preprocessing across:
-- classify_diagrams.py (diagram classification)
+- classify_with_llm.py (diagram classification)
 - count_elements.py (element counting)
 - count_relationships.py (relationship counting)
 
