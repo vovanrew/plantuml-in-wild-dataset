@@ -56,7 +56,7 @@ Deduplication was inherently performed at the blob level, as WoC's content-addre
 
 ### 4.1 Multi-Diagram Splitting
 
-Many source files contained multiple diagram blocks within a single file. Out of the 200,144 files after length-based filtering, **1,843 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using flexible regex patterns to:
+Many source files contained multiple diagram blocks within a single file. Out of the 200,144 files after length-based filtering, **1,843 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
 - Detect multiple `@startuml...@enduml` blocks within a single file
 - Handle case-insensitive variations (`@StartUML`, `@STARTUML`)
 - Support different diagram types (`@startditaa`, `@startsalt`)
@@ -101,188 +101,202 @@ The slight excess of images over valid files (163,589 .png vs. 162,257 .puml) is
 
 Files with compilation errors were logged separately and could serve as a complementary dataset for error analysis and tool improvement research.
 
-
-
----------------------------------------------------------------------------------
----------------------------------------------------------------------------------
----------------------------------------------------------------------------------
-
-
-
 ## 6. Dataset Analysis Framework
 
 ### 6.1 Complexity Metrics
 
 We implemented automated analysis to characterize diagram complexity:
-- **Line count**: Non-blank, non-comment lines (excluding `@startuml/@enduml` markers)
-- **Complexity categories**:
-  - Simple: < 10 lines
-  - Medium: 10-50 lines
-  - Complex: > 50 lines
+- **Line metrics**:
+  - `content_lines`: Non-blank, non-comment lines (excluding metadata header, `@startuml/@enduml` markers)
+  - `comment_lines`: Pure comment lines
+- **Distribution** (logarithmic bins for right-skewed data):
+
+| Lines | Count | Percentage |
+|-------|-------|------------|
+| 1-10 | 34,049 | 21.0% |
+| 11-100 | 117,252 | 72.3% |
+| 101-1000 | 10,792 | 6.6% |
+| 1001+ | 148 | 0.1% |
+
+**Summary Statistics**: Mean: 42.5 lines, Median: 24 lines, Q1: 12, Q3: 49
 
 ### 6.2 Diagram Type Classification
 
-We developed a hierarchical rule-based classifier to automatically categorize PlantUML diagrams into their respective UML diagram types. The classifier supports 9 UML diagram types (sequence, class, activity, state, use case, component, deployment, object, timing) plus 4 non-UML types (Graphviz, Ditaa, Salt, Gantt).
+We developed an LLM-based classifier using Claude Haiku 4.5 to categorize PlantUML diagrams into UML diagram types. The classifier leverages Anthropic's Message Batches API for cost-effective processing of the full dataset (162k+ diagrams).
 
-#### 6.2.1 Classification Architecture
+#### 6.2.1 Supported Diagram Types
 
-The classification pipeline consists of six stages:
+The classifier identifies 10 diagram categories:
+- **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object, timing
+- **Unclassified**: Diagrams without recognizable UML patterns (library files, sprites, minimal content)
 
-1. **Comment Stripping**: Removal of PlantUML comments (single-line `'` and multi-line `/' ... '/`) to prevent false keyword detection in documentation
-2. **Styling Block Removal**: Elimination of non-semantic configuration blocks (`skinparam`, `hide`, `show`, `style`) that contain diagram type keywords in styling context, preventing false positives from presentation markup
-3. **Preprocessor Directive Removal**: Stripping of PlantUML preprocessor directives (`!define`, `!include`, `!procedure`, `!function`) that are meta-programming constructs for reusable components, not diagram content. This prevents icon/sprite library files from being misclassified based on macro parameter patterns like `(_alias)` matching use case parentheses syntax
-4. **Feature Extraction**: Detection of 80+ diagram-specific features including keywords, syntax patterns, and structural elements
-5. **Hierarchical Scoring**: Four-tier weighted scoring system with exponential multipliers
-6. **Normalization and Thresholding**: Score normalization and multi-label classification support
+#### 6.2.2 Preprocessing Pipeline
 
-#### 6.2.2 Hierarchical Feature Tier System
+Before classification, each diagram undergoes preprocessing to remove non-semantic content that could cause false positives:
 
-Unlike traditional flat scoring systems where all features contribute equal weight, our classifier employs a **4-tier hierarchy** with exponential multipliers to ensure decisive features dominate classification:
+1. **Comment Stripping**: Single-line (`'`), multi-line (`/' ... '/`), and inline comments
+2. **Styling Block Removal**: `skinparam`, `hide/show` directives, `style` blocks
+3. **Sprite Definition Removal**: Hex/raster sprites and SVG inline sprites
+4. **Preprocessor Directive Removal**: `!define`, `!include`, `!procedure`, `!function` blocks
+5. **Note Block Removal**: Single-line, multi-line, and floating notes
+6. **Documentation Block Removal**: `header`, `footer`, `title`, `legend`, `caption` blocks
 
-**Tier Structure:**
-- **Tier 1 (Decisive)**: 100x multiplier - Unique/definitive features that nearly guarantee diagram type
-- **Tier 2 (Strong)**: 10x multiplier - Highly characteristic features with minimal ambiguity
-- **Tier 3 (Moderate)**: 1x multiplier - Common features that may appear across multiple types
-- **Tier 4 (Weak)**: 0.1x multiplier - Ambiguous features requiring contextual interpretation
+#### 6.2.3 Classification Process
 
-**Example Weight Calculation:**
-```
-Sequence Diagram with:
-- has_participant (Tier 1, base weight 1.5): 1.5 × 100 = 150 points
-- has_alt_loop (Tier 2, base weight 2.5): 2.5 × 10 = 25 points
-- has_end (Tier 3, base weight 0.5): 0.5 × 1 = 0.5 points
-Total raw score: 175.5 points (normalized across all diagram types)
-```
+**Model**: `claude-haiku-4-5-20251001`
+**API**: Anthropic Message Batches API (batch size: 100,000 requests)
 
-This exponential weighting ensures that a single Tier 1 feature (e.g., `has_member_visibility` for class diagrams) dominates hundreds of weak signals, preventing noise accumulation and improving classification accuracy.
+For each diagram, the classifier:
+1. Preprocesses content using the pipeline above
+2. Truncates files exceeding 5,000 words to 4,000 words (preserves beginning)
+3. Submits to Claude with a structured prompt requesting JSON output
+4. Extracts diagram types with confidence scores (0.0-1.0)
 
-#### 6.2.3 Feature Extraction
+**Output Format**:
+- `primary_type`: Highest-confidence diagram type
+- `types`: Dictionary of all detected types with confidence scores
+- `confidence`: Primary type confidence value
+- `reasoning`: Brief explanation of classification decision
 
-The feature extraction system identifies diagram-specific patterns through regex-based detection:
+#### 6.2.4 Classification Criteria
 
-**Sequence Diagram Features:**
-- Core: `participant`, `actor`, `activate`, message arrows (`->`, `-->`)
-- Lifecycle: `**` (create), `!!` (destroy), `++`/`--` (activation shortcuts)
-- Control flow: `alt`, `loop`, `opt`, `par`, `else`, `end`
-- Special: `autonumber`, `ref over`, lost messages (`-->x`)
+The prompt instructs the model to identify diagrams based on characteristic features:
 
-**Activity Diagram Features:**
-- New syntax: `:action;`, `|Swimlane|`, `fork again`, `split`, `elseif`
-- Old syntax: `(*)` markers, `===` synchronization bars
-- Unique keywords: `switch`, `case`, `backward`, `kill`, `detach`
-- Shared: `start`, `stop`, `partition`, `if/then/else`, `while`
+| Type | Key Features |
+|------|--------------|
+| sequence | `participant`, `->`, `activate`, `alt`, `loop` |
+| class | `class`, `interface`, `extends`, inheritance arrows |
+| activity | `start`, `stop`, `:action;`, `if/then/else` |
+| state | `[*]`, `state`, `-->` transitions |
+| usecase | `(usecase)`, `:actor:`, system boundaries |
+| component | `[component]`, `interface`, `package` |
+| deployment | `node`, `artifact`, `device`, `cloud` |
+| object | `object`, `map`, field assignments |
+| timing | `@time`, `robust`, `concise` |
 
-**Class Diagram Features:**
-- Distinctive: Member visibility (`+`, `-`, `#`, `~`), `abstract`, `interface`
-- Relationships: Inheritance (`<|--`), realization (`<|..`), composition (`*--`), aggregation (`o--`)
-- Elements: `class`, `enum`, association classes
-
-**State Diagram Features:**
-- Unique: History states (`[H]` shallow, `[H*]` deep)
-- Pseudo-states: `<<choice>>`, `<<entryPoint>>`, `<<exitPoint>>`, `<<fork>>`, `<<join>>`
-- Markers: `[*]` (initial/final states), composite states (`state X { ... }`)
-
-**Component Diagram Features:**
-- Highly distinctive: Port keywords (`port`, `portin`, `portout`)
-- Elements: `component`, `[ComponentName]` bracket notation, interface symbols `()`
-- Grouping: `package`, `database`, `folder`, `cloud`, `frame`
-
-**Deployment Diagram Features:**
-- Physical hardware: `artifact`, `device`, `storage`, `server`, `container`
-- Infrastructure: `node`, `deployment`, execution environment stereotypes
-- Nesting patterns: `node { ... }`, `cloud { ... }`
-
-**Use Case Diagram Features:**
-- Notation: `(Use Case)` parentheses, `:Actor:` colons
-- Relationships: `<<extend>>`, `<<include>>`, `rectangle` (system boundary)
-
-**Object Diagram Features:**
-- Unique: `map` keyword, `=>` key-value separator
-- Elements: `object`, instance notation (`name : Type`), field assignments
-
-**Timing Diagram Features:**
-- Participants: `robust`, `concise`, `binary`, `clock`, `analog`
-- Time notation: `@` symbols (`@0`, `@+10`), time constraints (`<->`)
-- State control: `has` keyword, `is` state assignments, `hide time-axis`
-
-#### 6.2.4 Context-Aware Feature Adjustment
-
-Ambiguous features that appear in multiple diagram types receive **dynamic weight adjustment** based on surrounding context:
-
-- `has_interface`: High weight (2.8) in class diagrams when `has_class` or `has_member_visibility` present; high weight in component diagrams when `has_component` present; otherwise low weight (0.5)
-- `has_node`: High weight (2.0) in deployment diagrams when `has_artifact` present; high weight (1.8) in component diagrams when artifact absent; otherwise low weight
-- `has_actor`: High weight (1.2) in use case diagrams when use case markers present; medium weight in sequence diagrams with many arrows; otherwise weak weight (0.4)
-
-This context-awareness prevents misclassification when shared keywords have different semantic meanings across diagram types.
-
-#### 6.2.5 Conflict Resolution and Penalties
-
-When conflicting Tier 1 or Tier 2 features from different diagram types are detected, **hierarchical penalties** reduce scores to prevent false positives:
-
-- **Sequence vs Activity**: If activity-unique keywords detected (`switch`, `backward`, `kill`), sequence score penalized by 0.3-0.4x
-- **Class vs Component**: If component ports detected (`portin`, `portout`), class score penalized by 0.5x
-- **Component vs Deployment**: If deployment features detected (`artifact`, `physical_deployment`), component score penalized by 0.6-0.75x
-
-Penalties are multiplicative and applied after tier-weighted scoring, ensuring that strong conflicting evidence significantly reduces inappropriate classifications.
-
-#### 6.2.6 Multi-Label Classification
-
-The system supports **multi-label classification** through threshold-based filtering (default threshold: 0.3). After normalization, any diagram type with confidence ≥ 30% is included in the result set, allowing diagrams with hybrid characteristics to be tagged with multiple types.
-
-Example multi-label scenario:
-```
-Diagram with both class structure AND object instances:
-- Primary: class (0.52 confidence)
-- Secondary: object (0.44 confidence)
-Result: Tagged as both [class, object]
-```
-
-Multi-label rate in validation sample: 32.1% of diagrams exhibit characteristics of multiple diagram types.
-
-#### 6.2.7 Classification Performance
-
-Validation on 1,000-file representative sample:
+#### 6.2.5 Classification Performance
 
 | Metric | Result |
 |--------|--------|
-| Processing speed | ~260 files/second |
-| Success rate | 100% (no crashes) |
-| Average confidence | 0.73 |
-| High confidence (>0.90) | ~40% of diagrams |
-| Multi-label diagrams | 32.1% |
+| Total files processed | 162,257 |
+| Average confidence | 0.867 |
 
-**Type Distribution (validation sample):**
-- Class: 37.5%
-- Use Case: 24.3%
-- Sequence: 16.1%
-- Component: 8.3%
-- Activity: 6.4%
-- Object: 3.2%
-- Deployment: 2.3%
-- State: 1.1%
-- Timing: 0.2%
-- Non-UML (Ditaa, Salt, Gantt): 0.4%
-- Unclassified: 0.2%
+**Type Distribution**:
 
-#### 6.2.8 Design Rationale
+| Type | Count | Percentage |
+|------|-------|------------|
+| class | 73,865 | 45.5% |
+| sequence | 35,229 | 21.7% |
+| unclassified | 12,616 | 7.8% |
+| activity | 9,836 | 6.1% |
+| component | 8,215 | 5.1% |
+| usecase | 7,460 | 4.6% |
+| deployment | 5,972 | 3.7% |
+| object | 4,419 | 2.7% |
+| state | 4,359 | 2.7% |
+| timing | 286 | 0.2% |
 
-The hierarchical approach addresses key limitations of flat scoring systems:
+### 6.3 Element Counting
 
-1. **Noise Resistance**: 100+ weak features cannot outweigh a single decisive feature (e.g., member visibility markers are nearly definitive for class diagrams)
-2. **Contextual Intelligence**: Shared keywords like `interface` and `node` adapt their contribution based on surrounding features
-3. **Transparent Logic**: Tier structure makes classification reasoning interpretable (Tier 1 features indicate "why" a diagram was classified)
-4. **Maintainability**: New features can be easily added by assigning them to the appropriate tier with minimal impact on existing logic
+We implemented automated element detection to quantify diagram complexity and validate classifications.
 
-The classifier achieved a **78% successful compilation rate** validation against PlantUML's official parser, with unclassified diagrams (<1%) typically being edge cases with minimal distinctive features or mixed diagram types within single files.
+#### 6.3.1 Supported Element Types
 
+The counter recognizes 50+ element types across categories:
 
-### 6.4 Quality Criteria
+**Class Diagram**: `class`, `abstract class`, `interface`, `enum`, `annotation`, `struct`, `protocol`, `exception`, `metaclass`
 
-Manual validation assessed the following dimensions:
-1. **Syntactic validity**: Successful PlantUML compilation (automated)
-2. **Semantic coherence**: Models a plausible real-world scenario
-3. **Naming quality**: Uses meaningful entity names (not generic placeholders like "Foo", "Bar")
-4. **Structural completeness**: Contains sufficient elements and relationships
+**Sequence Diagram**: `participant`, `actor`, `boundary`, `control`, `entity`, `database`, `collections`, `queue`
+
+**Use Case Diagram**: `usecase`, `actor`
+
+**Component/Deployment**: `component`, `node`, `artifact`, `cloud`, `database`, `storage`, `folder`, `frame`
+
+**Containers**: `package`, `namespace`, `rectangle`, `partition`, `box`, `group`
+
+#### 6.3.2 Detection Methods
+
+**Explicit Detection**: Elements declared with keywords (e.g., `class Foo`, `participant Alice`)
+
+**Shorthand Notation**:
+- `[ComponentName]` - bracket notation for components
+- `() InterfaceName` - lollipop notation for interfaces
+- `:ActorName:` - creole syntax for actors
+- `(UseCaseName)` - parenthesis notation for use cases
+
+**Implicit Detection**: Elements inferred from relationship usage (e.g., `A --> B` implies A and B exist). Implicit element types are assigned based on the diagram's primary classification.
+
+#### 6.3.3 Deduplication
+
+Global deduplication ensures each unique element is counted once:
+- Case-insensitive name matching
+- Alias resolution (e.g., `participant "Long Name" as LN`)
+- Generic type stripping (`List<String>` → `List`)
+
+#### 6.3.4 Element Statistics
+
+| Metric | Value |
+|--------|-------|
+| Diagrams with elements | 142,394 (87.8%) |
+| Total elements detected | 1,125,618 |
+| Average elements/diagram | 7.9 |
+
+**Top Element Types**:
+
+| Element Type | Count | % of Total |
+|--------------|-------|------------|
+| class | 445,555 | 39.6% |
+| participant | 134,243 | 11.9% |
+| interface | 65,498 | 5.8% |
+| component | 61,988 | 5.5% |
+| actor | 61,873 | 5.5% |
+| package | 55,863 | 5.0% |
+| usecase | 53,058 | 4.7% |
+| state | 34,455 | 3.1% |
+| object | 27,127 | 2.4% |
+| abstract class | 25,051 | 2.2% |
+
+### 6.4 Relationship Counting
+
+Relationships (arrows/connections) are counted and categorized by diagram type.
+
+#### 6.4.1 Arrow Pattern Detection
+
+The counter recognizes 20+ arrow patterns including:
+- Simple arrows: `-->`, `<--`, `->`, `<-`
+- Async arrows: `->>`, `<<-`
+- Inheritance: `<|--`, `--|>`
+- Composition/aggregation: `*--`, `o--`
+- Dependency: `..>`, `<..`
+- Bidirectional: `<-->`
+
+#### 6.4.2 Category Mapping
+
+Relationships are grouped into semantic categories based on diagram type:
+
+| Category | Diagram Types | Meaning |
+|----------|---------------|---------|
+| structural | class, object, component, deployment | Inheritance, composition, dependencies |
+| message | sequence, timing | Communication between participants |
+| flow | state, activity | Transitions and control flow |
+| association | usecase | Actor-usecase relationships |
+
+#### 6.4.3 Relationship Statistics
+
+| Metric | Value |
+|--------|-------|
+| Diagrams with relationships | 113,873 (70.2%) |
+| Total relationships detected | 1,198,771 |
+| Average relationships/diagram | 10.5 |
+
+**Distribution by Category**:
+
+| Category | Count | % of Total |
+|----------|-------|------------|
+| structural | 623,139 | 52.0% |
+| message | 446,164 | 37.2% |
+| flow | 82,113 | 6.8% |
+| association | 47,355 | 4.0% |
 
 ## 7. Metadata and Reproducibility
 
@@ -292,8 +306,12 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Blob ID**: SHA-1 hash serving as unique identifier
 - **Original file path**: Path in source repository
 - **Source repository**: GitHub URL (via WoC b2P mapping)
-- **Diagram type**: Automated classification result
-- **Complexity metrics**: Line count, element count, relationship count
+- **Diagram type**: LLM classification result with confidence score
+- **Line metrics**: `content_lines` and `comment_lines` counts
+- **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
+- **Relationship counts**: Per-category relationship counts (e.g., `{"structural": 12}`)
+- **Consistency score**: Validation score (0.0-1.0) indicating classification confidence
+- **Validation flags**: Any detected issues from cross-validation
 
 ### 7.2 Reproducibility
 
@@ -323,9 +341,24 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 
 All source code was obtained from publicly accessible repositories indexed by the World of Code project. The dataset preserves attribution to original repositories through blob-to-project mappings, enabling proper citation and license compliance. Users of this dataset are advised to respect the licenses of source repositories when utilizing the diagrams for research or commercial purposes.
 
-The dataset itself is released under [LICENSE TBD], with metadata clearly indicating source repository URLs for each diagram to facilitate license verification and proper attribution.
+### 9.1 Dataset License
 
----
+This dataset is released under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**. This license allows:
+- **Sharing**: Copying and redistributing the material in any medium or format
+- **Adaptation**: Remixing, transforming, and building upon the material for any purpose, including commercial use
+
+Under the condition that appropriate credit is given, a link to the license is provided, and any changes are indicated.
+
+### 9.2 Attribution Requirements
+
+When using this dataset, please:
+1. **Cite the dataset** using the Zenodo DOI: [DOI PLACEHOLDER - to be updated after upload]
+2. **Acknowledge the data source**: World of Code (WoC) Version 3 (October 2023 snapshot)
+3. **Respect original repository licenses**: Individual diagrams may be subject to their original repository licenses. The metadata includes source repository URLs (`file_path` field) to facilitate license verification
+
+### 9.3 Data Provenance
+
+Each diagram in the dataset includes metadata linking back to its source repository, ensuring full traceability and enabling users to verify original licensing terms when required for specific use cases.
 
 **Tools and Dependencies**:
 - World of Code V3 (Oct 7 2023 snapshot)

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Add Lines of Code (LOC) metrics to PlantUML classification JSON.
+Add line metrics to PlantUML classification JSON.
 
 This script reads a classification JSON file (output from classify_with_llm.py),
-counts LOC for each PUML file, and adds LOC metrics to the JSON output.
+counts lines for each PUML file, and adds line metrics to the JSON output.
 
-LOC Definition: Non-blank, non-comment lines
-- Excludes: blank lines, pure comment lines, multi-line comment blocks,
-  metadata header, @startuml/@enduml markers
-- Includes: lines with code content (even with inline comments)
+Metrics:
+- content_lines: Non-blank, non-comment lines (actual diagram content)
+- comment_lines: Pure comment lines
+
+Excludes from content_lines: blank lines, pure comment lines, multi-line comment blocks,
+metadata header, @startuml/@enduml markers
 
 Usage:
     python3 count_lines.py -i classify_result.json -d 1k_puml_sample -o output.json
@@ -92,29 +94,21 @@ def remove_inline_comment(line: str) -> str:
     return ''.join(result)
 
 
-def count_loc(puml_content: str) -> Dict[str, int]:
+def count_lines(puml_content: str) -> Dict[str, int]:
     """
-    Count Lines of Code (LOC) for PlantUML file.
-
-    LOC Definition: Non-blank, non-comment lines
-    - Excludes: blank lines, pure comment lines, multi-line comment blocks,
-      metadata header (first 3 comment lines), @startuml/@enduml markers
-    - Includes: lines with code content (even with inline comments)
+    Count lines for PlantUML file.
 
     Args:
         puml_content: Raw PlantUML file content
 
     Returns:
-        Dictionary with LOC metrics:
+        Dictionary with line metrics:
         {
-            'loc': int,              # Non-blank, non-comment lines
-            'total_lines': int,      # Raw line count
-            'blank_lines': int,      # Whitespace-only lines
+            'content_lines': int,    # Non-blank, non-comment lines
             'comment_lines': int,    # Pure comment lines
         }
     """
     lines = puml_content.split('\n')
-    total_lines = len(lines)
 
     # Skip metadata header (first 3 lines if they're all comments)
     if len(lines) >= 3 and all(line.strip().startswith("'") for line in lines[:3]):
@@ -125,8 +119,7 @@ def count_loc(puml_content: str) -> Dict[str, int]:
     content = re.sub(r"/'.*?'/", "", content, flags=re.DOTALL)
     lines = content.split('\n')
 
-    loc = 0
-    blank_lines = 0
+    content_lines = 0
     comment_lines = 0
 
     for line in lines:
@@ -134,9 +127,8 @@ def count_loc(puml_content: str) -> Dict[str, int]:
         if re.match(r'^\s*@(start|end)uml\s*$', line, re.IGNORECASE):
             continue
 
-        # Count blank lines
+        # Skip blank lines
         if not line.strip():
-            blank_lines += 1
             continue
 
         # Count pure comment lines
@@ -147,12 +139,10 @@ def count_loc(puml_content: str) -> Dict[str, int]:
         # Has code - remove inline comment and verify content exists
         cleaned = remove_inline_comment(line)
         if cleaned.strip():
-            loc += 1
+            content_lines += 1
 
     return {
-        'loc': loc,
-        'total_lines': total_lines,
-        'blank_lines': blank_lines,
+        'content_lines': content_lines,
         'comment_lines': comment_lines
     }
 
@@ -210,7 +200,7 @@ def compute_statistics(values: List[float]) -> Dict[str, float]:
 
 def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = False) -> Dict:
     """
-    Process classification JSON and add LOC metrics.
+    Process classification JSON and add line metrics.
 
     Args:
         input_path: Path to input JSON file
@@ -218,7 +208,7 @@ def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = F
         verbose: Show progress bar if True
 
     Returns:
-        Updated JSON data with LOC metrics
+        Updated JSON data with line metrics
     """
     # Load input JSON
     print(f"Loading classification JSON from: {input_path}")
@@ -234,7 +224,7 @@ def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = F
     skipped = 0
     errors = 0
 
-    iterator = tqdm(classifications.items(), desc="Adding LOC metrics") if verbose else classifications.items()
+    iterator = tqdm(classifications.items(), desc="Adding line metrics") if verbose else classifications.items()
 
     for filename, classification in iterator:
         try:
@@ -249,14 +239,12 @@ def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = F
             # Read content
             content = puml_path.read_text(encoding='utf-8', errors='replace')
 
-            # Count LOC
-            loc_metrics = count_loc(content)
+            # Count lines
+            line_metrics = count_lines(content)
 
             # Add metrics to classification
-            classification['loc'] = loc_metrics['loc']
-            classification['total_lines'] = loc_metrics['total_lines']
-            classification['blank_lines'] = loc_metrics['blank_lines']
-            classification['comment_lines'] = loc_metrics['comment_lines']
+            classification['content_lines'] = line_metrics['content_lines']
+            classification['comment_lines'] = line_metrics['comment_lines']
 
             processed += 1
 
@@ -269,38 +257,37 @@ def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = F
     if 'metadata' not in data:
         data['metadata'] = {}
 
-    data['metadata']['loc_added'] = True
-    data['metadata']['loc_timestamp'] = datetime.now().isoformat()
-    data['metadata']['loc_processed'] = processed
-    data['metadata']['loc_skipped'] = skipped
-    data['metadata']['loc_errors'] = errors
+    data['metadata']['lines_added'] = True
+    data['metadata']['lines_timestamp'] = datetime.now().isoformat()
+    data['metadata']['lines_processed'] = processed
+    data['metadata']['lines_skipped'] = skipped
+    data['metadata']['lines_errors'] = errors
 
-    # Compute LOC statistics
-    all_locs = [c['loc'] for c in classifications.values() if 'loc' in c]
-    if all_locs:
+    # Compute content_lines statistics
+    all_content_lines = [c['content_lines'] for c in classifications.values() if 'content_lines' in c]
+    if all_content_lines:
         if 'statistics' not in data:
             data['statistics'] = {}
 
-        data['statistics']['loc_statistics'] = compute_statistics(all_locs)
+        data['statistics']['lines_count_statistics'] = compute_statistics(all_content_lines)
 
-        # Add LOC distribution
+        # Add content_lines distribution (logarithmic bins for right-skewed data)
         distribution = {
-            '1-10': sum(1 for loc in all_locs if 1 <= loc <= 10),
-            '11-50': sum(1 for loc in all_locs if 11 <= loc <= 50),
-            '51-100': sum(1 for loc in all_locs if 51 <= loc <= 100),
-            '101-200': sum(1 for loc in all_locs if 101 <= loc <= 200),
-            '201+': sum(1 for loc in all_locs if loc > 200)
+            '1-10': sum(1 for val in all_content_lines if 1 <= val <= 10),
+            '11-100': sum(1 for val in all_content_lines if 11 <= val <= 100),
+            '101-1000': sum(1 for val in all_content_lines if 101 <= val <= 1000),
+            '1001+': sum(1 for val in all_content_lines if val > 1000)
         }
-        data['statistics']['loc_distribution'] = distribution
+        data['statistics']['lines_count_distribution'] = distribution
 
     print(f"\nProcessing complete:")
     print(f"  Processed: {processed}")
     print(f"  Skipped (file not found): {skipped}")
     print(f"  Errors: {errors}")
 
-    if all_locs:
-        stats = data['statistics']['loc_statistics']
-        print(f"\nLOC Statistics:")
+    if all_content_lines:
+        stats = data['statistics']['lines_count_statistics']
+        print(f"\nLines Count Statistics:")
         print(f"  Min: {stats['min']}")
         print(f"  Max: {stats['max']}")
         print(f"  Mean: {stats['mean']}")
@@ -314,7 +301,7 @@ def process_json_file(input_path: Path, puml_dirs: List[Path], verbose: bool = F
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Add LOC metrics to PlantUML classification JSON',
+        description='Add line metrics to PlantUML classification JSON',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -340,7 +327,7 @@ Examples:
         '-o', '--output',
         type=Path,
         required=True,
-        help='Output JSON file with LOC metrics'
+        help='Output JSON file with line metrics'
     )
 
     parser.add_argument(

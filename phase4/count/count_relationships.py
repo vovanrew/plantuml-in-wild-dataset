@@ -2,23 +2,27 @@
 """
 PlantUML Relationship Counter - counts arrows/connections in diagrams.
 
-Counts relationships and merges with element counts from count_elements.py.
+Counts relationships and adds to existing classification data.
 Uses coarse categories: structural, message, flow, association.
+Preserves input JSON structure and augments classifications with relationship counts.
 
 Usage:
+    python3 count_relationships.py --input <json> --puml-dir <dir> --output <json>
+
+Example:
     python3 count_relationships.py \
-        --element-counts element_counts.json \
+        --input element_counts.json \
         --puml-dir ../puml_validated/valid \
-        --output analysis_complete.json
+        --output relationship_counts.json
 """
 
 import argparse
+import copy
 import json
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 # Try to import tqdm for progress bar
 try:
@@ -156,8 +160,8 @@ def count_relationships(content: str, primary_type: str) -> Dict[str, int]:
 # FILE PROCESSING
 # =============================================================================
 
-def load_element_counts(path: Path) -> Dict[str, Any]:
-    """Load element counts JSON file."""
+def load_input(path: Path) -> Dict[str, Any]:
+    """Load input JSON file."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
@@ -172,127 +176,123 @@ def read_puml_file(path: Path) -> Optional[str]:
         return None
 
 
+def aggregate_statistics(
+    classifications: Dict[str, Dict],
+) -> Dict[str, Any]:
+    """Generate relationship count statistics from classifications."""
+    with_relationships = sum(
+        1 for c in classifications.values() if c.get("total_relationships", 0) > 0
+    )
+    relationships_total = sum(
+        c.get("total_relationships", 0) for c in classifications.values()
+    )
+
+    by_category: Dict[str, int] = {}
+    for classification in classifications.values():
+        for category, count in classification.get("relationships", {}).items():
+            by_category[category] = by_category.get(category, 0) + count
+
+    by_category = dict(sorted(by_category.items(), key=lambda x: -x[1]))
+
+    return {
+        "with_relationships": with_relationships,
+        "relationships_total": relationships_total,
+        "by_category": by_category,
+    }
+
+
 def process_files(
-    element_counts_path: Path,
+    input_path: Path,
     puml_dir: Path,
+    output_path: Path,
 ) -> Dict[str, Any]:
     """
-    Process all files and merge element counts with relationship counts.
+    Process all files from input JSON, preserving existing structure.
 
     Args:
-        element_counts_path: Path to element_counts.json
+        input_path: Path to input JSON file
         puml_dir: Directory containing .puml files
+        output_path: Path for output JSON file
 
     Returns:
-        Merged results dictionary
+        Augmented results dictionary
     """
-    start_time = datetime.now()
+    print(f"Loading input from {input_path}...")
+    data = load_input(input_path)
 
-    print(f"Loading element counts from {element_counts_path}...")
-    element_data = load_element_counts(element_counts_path)
-    element_results = element_data.get("results", {})
+    # Start with deep copy of input data to preserve all existing fields
+    output = copy.deepcopy(data)
 
-    print(f"Found {len(element_results)} files in element counts")
+    classifications = output.get("classifications", {})
 
-    # Process each file
-    merged_results: Dict[str, Dict] = {}
-    relationship_stats: Dict[str, int] = {}
-    total_relationships = 0
+    print(f"Processing {len(classifications)} files for relationships...")
 
-    files_to_process = list(element_results.items())
-
-    print(f"Processing {len(files_to_process)} files for relationships...")
+    files_to_process = list(classifications.items())
 
     if HAS_TQDM:
         iterator = tqdm(files_to_process, desc="Counting relationships")
     else:
         iterator = files_to_process
 
-    for idx, (filename, elem_result) in enumerate(iterator):
+    for filename, classification in iterator:
         filepath = puml_dir / filename
 
-        # Start with element data
-        merged = {
-            "primary_type": elem_result.get("primary_type", ""),
-            "confidence": elem_result.get("confidence"),
-            "diagram_types": elem_result.get("diagram_types", []),
-            "elements": elem_result.get("elements", {}),
-            "total_elements": elem_result.get("total_elements", 0),
-        }
+        if not filepath.exists():
+            # Add relationship fields to existing classification
+            classification["relationships"] = {}
+            classification["total_relationships"] = 0
+            classification["relationship_count_note"] = "file not found"
+            continue
 
-        # Count relationships
-        if filepath.exists():
-            content = read_puml_file(filepath)
-            if content:
-                primary_type = elem_result.get("primary_type", "class")
-                rel_counts = count_relationships(content, primary_type)
-                merged["relationships"] = rel_counts
-                merged["total_relationships"] = sum(rel_counts.values())
+        content = read_puml_file(filepath)
+        if content is None:
+            classification["relationships"] = {}
+            classification["total_relationships"] = 0
+            classification["relationship_count_note"] = "read error"
+            continue
 
-                # Update statistics
-                total_relationships += merged["total_relationships"]
-                for cat, count in rel_counts.items():
-                    relationship_stats[cat] = relationship_stats.get(cat, 0) + count
-            else:
-                merged["relationships"] = {}
-                merged["total_relationships"] = 0
-        else:
-            merged["relationships"] = {}
-            merged["total_relationships"] = 0
-            merged["note"] = elem_result.get("note", "file not found")
+        primary_type = classification.get("primary_type", "class")
 
-        merged_results[filename] = merged
+        # Count relationships and add to existing classification
+        rel_counts = count_relationships(content, primary_type)
+        classification["relationships"] = rel_counts
+        classification["total_relationships"] = sum(rel_counts.values())
 
-        # Progress update (if no tqdm)
-        if not HAS_TQDM and (idx + 1) % 10000 == 0:
-            print(f"Processed {idx + 1}/{len(files_to_process)} files...", file=sys.stderr)
+    # Add relationship_count_statistics to existing statistics section
+    rel_stats = aggregate_statistics(classifications)
 
-    end_time = datetime.now()
-    duration = end_time - start_time
-    processing_time = str(duration).split('.')[0]
+    if "statistics" not in output:
+        output["statistics"] = {}
+    output["statistics"]["relationship_count_statistics"] = rel_stats
 
-    # Build statistics
-    statistics = {
-        "total_files": len(merged_results),
-        "files_with_relationships": sum(
-            1 for r in merged_results.values() if r["total_relationships"] > 0
-        ),
-        "total_relationships": total_relationships,
-        "by_category": dict(sorted(relationship_stats.items(), key=lambda x: -x[1])),
-        "processing_time": processing_time,
-    }
+    print(f"Writing results to {output_path}...")
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
 
-    # Copy element statistics if available
-    if "statistics" in element_data:
-        statistics["elements_total"] = element_data["statistics"].get("elements_total", 0)
-        statistics["by_element_type"] = element_data["statistics"].get("by_element_type", {})
+    print("\n=== Relationship Count Summary ===")
+    print(f"Total files: {len(classifications)}")
+    print(f"Files with relationships: {rel_stats['with_relationships']}")
+    print(f"Total relationships: {rel_stats['relationships_total']}")
+    print("\nRelationships by category:")
+    for category, count in rel_stats['by_category'].items():
+        print(f"  {category}: {count}")
 
-    return {
-        "metadata": {
-            "version": VERSION,
-            "timestamp": datetime.now().isoformat(),
-            "source_elements": str(element_counts_path),
-            "puml_directory": str(puml_dir),
-            "note": "Merged element counts and relationship counts"
-        },
-        "statistics": statistics,
-        "results": merged_results
-    }
+    return output
 
 
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Count relationships in PlantUML diagrams and merge with element counts",
+        description="Count relationships in PlantUML diagrams",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
 
     parser.add_argument(
-        "--element-counts", "-e",
+        "--input", "-i",
         type=Path,
         required=True,
-        help="Path to element_counts.json from count_elements.py"
+        help="Path to input JSON file (from count_elements.py or earlier pipeline step)"
     )
 
     parser.add_argument(
@@ -305,43 +305,21 @@ def main():
     parser.add_argument(
         "--output", "-o",
         type=Path,
-        default=Path("analysis_complete.json"),
-        help="Output JSON file path (default: analysis_complete.json)"
+        default=Path("relationship_counts.json"),
+        help="Output JSON file path (default: relationship_counts.json)"
     )
 
     args = parser.parse_args()
 
-    if not args.element_counts.exists():
-        print(f"Error: Element counts file not found: {args.element_counts}", file=sys.stderr)
+    if not args.input.exists():
+        print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
     if not args.puml_dir.exists():
         print(f"Error: PUML directory not found: {args.puml_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Process files
-    output = process_files(args.element_counts, args.puml_dir)
-
-    # Write output
-    print(f"\nWriting results to {args.output}...")
-    with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-
-    # Print summary
-    stats = output["statistics"]
-    print("\n" + "=" * 60)
-    print("Analysis Complete")
-    print("=" * 60)
-    print(f"Total files: {stats['total_files']}")
-    print(f"Files with relationships: {stats['files_with_relationships']}")
-    print(f"Total relationships: {stats['total_relationships']}")
-    if stats.get('elements_total'):
-        print(f"Total elements: {stats['elements_total']}")
-    print(f"\nRelationships by category:")
-    for cat, count in stats['by_category'].items():
-        print(f"  {cat}: {count}")
-    print(f"\nProcessing time: {stats['processing_time']}")
-    print("=" * 60)
+    process_files(args.input, args.puml_dir, args.output)
 
 
 if __name__ == "__main__":

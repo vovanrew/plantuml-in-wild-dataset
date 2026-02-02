@@ -4,24 +4,26 @@ PlantUML Element Counter - counts unique elements in diagrams.
 
 Single self-contained script with global deduplication.
 Implicit elements are typed based on the diagram's primary_type.
+Preserves input JSON structure and augments classifications with element counts.
 
 Usage:
-    python3 count_elements.py --classifications <json> --puml-dir <dir> --output <json>
+    python3 count_elements.py --input <json> --puml-dir <dir> --output <json>
 
 Example:
     python3 count_elements.py \
-        --classifications ../classify/1k_sample_diagram_classifications.json \
+        --input ../count/line_counts.json \
         --puml-dir ../1k_puml_sample \
         --output element_counts.json
 """
 
 import argparse
+import copy
 import json
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Set, Any, List, Optional
+from typing import Dict, Set, Any, Optional
 
 # Try to import tqdm for progress bar
 try:
@@ -714,68 +716,43 @@ def read_puml_file(path: Path) -> Optional[str]:
         return None
 
 
-def process_file(
-    content: str,
-    primary_type: str,
-    diagram_types: List[str],
-) -> Dict[str, Any]:
-    """Process a single PlantUML file and count elements."""
-    clean_content = preprocess_content(content)
-    all_elements = count_elements(clean_content, primary_type)
-
-    return {
-        "primary_type": primary_type,
-        "diagram_types": diagram_types,
-        "elements": all_elements,
-        "total_elements": sum(all_elements.values())
-    }
-
-
 def aggregate_statistics(
-    results: Dict[str, Dict],
-    start_time: datetime,
-    end_time: datetime,
+    classifications: Dict[str, Dict],
 ) -> Dict[str, Any]:
-    """Generate aggregate statistics from results."""
-    total_files = len(results)
-    with_elements = sum(1 for r in results.values() if r["total_elements"] > 0)
-    elements_total = sum(r["total_elements"] for r in results.values())
+    """Generate element count statistics from classifications."""
+    with_elements = sum(1 for c in classifications.values() if c.get("total_elements", 0) > 0)
+    elements_total = sum(c.get("total_elements", 0) for c in classifications.values())
 
     by_element_type: Dict[str, int] = {}
-    for result in results.values():
-        for elem_type, count in result["elements"].items():
+    for classification in classifications.values():
+        for elem_type, count in classification.get("elements", {}).items():
             by_element_type[elem_type] = by_element_type.get(elem_type, 0) + count
 
     by_element_type = dict(sorted(by_element_type.items(), key=lambda x: -x[1]))
 
-    duration = end_time - start_time
-    processing_time = str(duration).split('.')[0]
-
     return {
-        "total_files": total_files,
-        "processed": total_files,
         "with_elements": with_elements,
         "elements_total": elements_total,
         "by_element_type": by_element_type,
-        "processing_time": processing_time,
     }
 
 
 def process_directory(
-    classifications_path: Path,
+    input_path: Path,
     puml_dir: Path,
     output_path: Path,
 ) -> Dict[str, Any]:
-    """Process all files from classification JSON."""
-    start_time = datetime.now()
+    """Process all files from input JSON, preserving existing structure."""
+    print(f"Loading input from {input_path}...")
+    data = load_classifications(input_path)
 
-    print(f"Loading classifications from {classifications_path}...")
-    data = load_classifications(classifications_path)
-    classifications = data.get("classifications", {})
+    # Start with deep copy of input data to preserve all existing fields
+    output = copy.deepcopy(data)
+
+    classifications = output.get("classifications", {})
 
     print(f"Using unified element counter v{VERSION}")
 
-    results: Dict[str, Dict] = {}
     files_to_process = list(classifications.items())
 
     print(f"Processing {len(files_to_process)} files...")
@@ -789,65 +766,46 @@ def process_directory(
         filepath = puml_dir / filename
 
         if not filepath.exists():
-            results[filename] = {
-                "primary_type": "",
-                "confidence": None,
-                "diagram_types": [],
-                "elements": {},
-                "total_elements": 0,
-                "note": "file not found"
-            }
+            # Add element fields to existing classification
+            classification["elements"] = {}
+            classification["total_elements"] = 0
+            classification["element_count_note"] = "file not found"
             continue
 
         content = read_puml_file(filepath)
         if content is None:
-            results[filename] = {
-                "primary_type": "",
-                "confidence": None,
-                "diagram_types": [],
-                "elements": {},
-                "total_elements": 0,
-                "note": "read error"
-            }
+            classification["elements"] = {}
+            classification["total_elements"] = 0
+            classification["element_count_note"] = "read error"
             continue
 
         primary_type = classification.get("primary_type", "class")
-        confidence = classification.get("confidence")
-        diagram_types = list(classification.get("types", {}).keys())
-        if not diagram_types:
-            diagram_types = [primary_type]
 
-        result = process_file(content, primary_type, diagram_types)
-        result["confidence"] = confidence
-        results[filename] = result
+        # Process file and add element counts to existing classification
+        clean_content = preprocess_content(content)
+        all_elements = count_elements(clean_content, primary_type)
 
-    end_time = datetime.now()
+        # Add elements to existing classification (preserves content_lines, comment_lines, etc.)
+        classification["elements"] = all_elements
+        classification["total_elements"] = sum(all_elements.values())
 
-    statistics = aggregate_statistics(results, start_time, end_time)
+    # Add element_count_statistics to existing statistics section
+    element_stats = aggregate_statistics(classifications)
 
-    output = {
-        "metadata": {
-            "version": VERSION,
-            "timestamp": datetime.now().isoformat(),
-            "classifications_file": str(classifications_path),
-            "puml_directory": str(puml_dir),
-            "note": "Unified element counter with global deduplication"
-        },
-        "statistics": statistics,
-        "results": results
-    }
+    if "statistics" not in output:
+        output["statistics"] = {}
+    output["statistics"]["element_count_statistics"] = element_stats
 
     print(f"Writing results to {output_path}...")
     with open(output_path, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print("\n=== Summary ===")
-    print(f"Total files: {statistics['total_files']}")
-    print(f"Files with elements: {statistics['with_elements']}")
-    print(f"Total elements: {statistics['elements_total']}")
-    print(f"Processing time: {statistics['processing_time']}")
+    print("\n=== Element Count Summary ===")
+    print(f"Total files: {len(classifications)}")
+    print(f"Files with elements: {element_stats['with_elements']}")
+    print(f"Total elements: {element_stats['elements_total']}")
     print("\nElements by type:")
-    for elem_type, count in statistics['by_element_type'].items():
+    for elem_type, count in element_stats['by_element_type'].items():
         print(f"  {elem_type}: {count}")
 
     return output
@@ -866,10 +824,10 @@ def main():
     )
 
     parser.add_argument(
-        "--classifications", "-c",
+        "--input", "-i",
         type=Path,
         required=True,
-        help="Path to classification JSON file"
+        help="Path to input JSON file (from count_lines.py or classify)"
     )
 
     parser.add_argument(
@@ -888,8 +846,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not args.classifications.exists():
-        print(f"Error: Classification file not found: {args.classifications}", file=sys.stderr)
+    if not args.input.exists():
+        print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
     if not args.puml_dir.exists():
@@ -897,7 +855,7 @@ def main():
         sys.exit(1)
 
     process_directory(
-        args.classifications,
+        args.input,
         args.puml_dir,
         args.output,
     )
