@@ -1,0 +1,292 @@
+{
+  "metadata": {
+    "source_file": "phase4/validation/manual_validation_sample_100.csv",
+    "total_records": 100
+  },
+  "classification_accuracy": {
+    "total_samples": 100,
+    "correct_classifications": 92,
+    "incorrect_classifications": 8,
+    "overall_accuracy_percent": 92.0,
+    "per_type_accuracy": {
+      "activity": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      },
+      "class": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      },
+      "component": {
+        "correct": 9,
+        "total": 10,
+        "accuracy_percent": 90.0
+      },
+      "deployment": {
+        "correct": 9,
+        "total": 10,
+        "accuracy_percent": 90.0
+      },
+      "object": {
+        "correct": 5,
+        "total": 10,
+        "accuracy_percent": 50.0
+      },
+      "sequence": {
+        "correct": 9,
+        "total": 10,
+        "accuracy_percent": 90.0
+      },
+      "state": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      },
+      "timing": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      },
+      "unclassified": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      },
+      "usecase": {
+        "correct": 10,
+        "total": 10,
+        "accuracy_percent": 100.0
+      }
+    }
+  },
+  "confusion_matrix": {
+    "total_errors": 8,
+    "confusion_summary": [
+      {
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "count": 5
+      },
+      {
+        "classified_as": "component",
+        "actual_type": "deployment",
+        "count": 1
+      },
+      {
+        "classified_as": "deployment",
+        "actual_type": "component",
+        "count": 1
+      },
+      {
+        "classified_as": "sequence",
+        "actual_type": "activity",
+        "count": 1
+      }
+    ],
+    "misclassified_files": [
+      {
+        "filename": "dbdad62063cdf3727bc32631bfb76b3662dc6770.puml",
+        "classified_as": "component",
+        "actual_type": "deployment",
+        "notes": "Documents deployment architecture for a Spring Boot project"
+      },
+      {
+        "filename": "2074dfc8b67f1270b6553fdb9054387f82046307.puml",
+        "classified_as": "deployment",
+        "actual_type": "component",
+        "notes": "More a component diagram. It shows \"what software services exist and how do they communicate\" — that's a component diagram. A deployment version of this would show which\n  servers/containers/pods host each service, with network topology and protocols."
+      },
+      {
+        "filename": "1ef13369ae27745fbccdac43382b3539b56fe330.puml",
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "notes": "This is PlantUML's json directive for visualizing data structures, not a UML diagram"
+      },
+      {
+        "filename": "01b9666903d2ddb368be1939cb7dbce5bf4f9ebc.puml",
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "notes": "ERD diagram, could be a class diagram"
+      },
+      {
+        "filename": "395398f07314812e9163b31f876d0ef5bee38bc7.puml",
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "notes": "This is a Salt wireframe (UI mockup), not a UML diagram."
+      },
+      {
+        "filename": "f59b3abed20f89fdc71d641e6a61abc675d45258.puml",
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "notes": "ERD diagram, could be a class diagram"
+      },
+      {
+        "filename": "981965104eb3291b439a10c896da945b53961bc2.puml",
+        "classified_as": "object",
+        "actual_type": "unclassified",
+        "notes": "ERD diagram. Sports team management database schema."
+      },
+      {
+        "filename": "2452d5eb53490907e7cc1699229b3fe60511b9e4.puml",
+        "classified_as": "sequence",
+        "actual_type": "activity",
+        "notes": "University coursework (NTUU KPI Kyiv-2020). Ukrainian language. Learning Management System admin scenario"
+      }
+    ]
+  },
+  "error_categories": {
+    "component_deployment_confusion": {
+      "count": 2,
+      "description": "PlantUML's node/component syntax overlap causes boundary ambiguity",
+      "files": [
+        {
+          "filename": "dbdad62063cdf3727bc32631bfb76b3662dc6770.puml",
+          "classified_as": "component",
+          "actual_type": "deployment",
+          "notes": "Documents deployment architecture for a Spring Boot project"
+        },
+        {
+          "filename": "2074dfc8b67f1270b6553fdb9054387f82046307.puml",
+          "classified_as": "deployment",
+          "actual_type": "component",
+          "notes": "More a component diagram. It shows \"what software services exist and how do they communicate\" — that's a component diagram. A deployment version of this would show which\n  servers/containers/pods host each service, with network topology and protocols."
+        }
+      ]
+    },
+    "sequence_activity_confusion": {
+      "count": 1,
+      "description": "Step-by-step processes documented using sequence syntax",
+      "files": [
+        {
+          "filename": "2452d5eb53490907e7cc1699229b3fe60511b9e4.puml",
+          "classified_as": "sequence",
+          "actual_type": "activity",
+          "notes": "University coursework (NTUU KPI Kyiv-2020). Ukrainian language. Learning Management System admin scenario"
+        }
+      ]
+    },
+    "object_overassignment": {
+      "count": 5,
+      "description": "Non-UML PlantUML extensions (ERD, JSON, Salt) misclassified as object",
+      "files": [
+        {
+          "filename": "1ef13369ae27745fbccdac43382b3539b56fe330.puml",
+          "classified_as": "object",
+          "actual_type": "unclassified",
+          "notes": "This is PlantUML's json directive for visualizing data structures, not a UML diagram"
+        },
+        {
+          "filename": "01b9666903d2ddb368be1939cb7dbce5bf4f9ebc.puml",
+          "classified_as": "object",
+          "actual_type": "unclassified",
+          "notes": "ERD diagram, could be a class diagram"
+        },
+        {
+          "filename": "395398f07314812e9163b31f876d0ef5bee38bc7.puml",
+          "classified_as": "object",
+          "actual_type": "unclassified",
+          "notes": "This is a Salt wireframe (UI mockup), not a UML diagram."
+        },
+        {
+          "filename": "f59b3abed20f89fdc71d641e6a61abc675d45258.puml",
+          "classified_as": "object",
+          "actual_type": "unclassified",
+          "notes": "ERD diagram, could be a class diagram"
+        },
+        {
+          "filename": "981965104eb3291b439a10c896da945b53961bc2.puml",
+          "classified_as": "object",
+          "actual_type": "unclassified",
+          "notes": "ERD diagram. Sports team management database schema."
+        }
+      ]
+    },
+    "other": {
+      "count": 0,
+      "description": "Other misclassifications",
+      "files": []
+    }
+  },
+  "real_world_analysis": {
+    "real_world": 58,
+    "not_real_world": 33,
+    "not_applicable": 9,
+    "real_world_percent": 63.7,
+    "by_type": {
+      "activity": {
+        "real_world": 5,
+        "not_real_world": 5,
+        "not_applicable": 0,
+        "real_world_percent": 50.0
+      },
+      "class": {
+        "real_world": 5,
+        "not_real_world": 5,
+        "not_applicable": 0,
+        "real_world_percent": 50.0
+      },
+      "component": {
+        "real_world": 6,
+        "not_real_world": 4,
+        "not_applicable": 0,
+        "real_world_percent": 60.0
+      },
+      "deployment": {
+        "real_world": 7,
+        "not_real_world": 3,
+        "not_applicable": 0,
+        "real_world_percent": 70.0
+      },
+      "object": {
+        "real_world": 8,
+        "not_real_world": 2,
+        "not_applicable": 0,
+        "real_world_percent": 80.0
+      },
+      "sequence": {
+        "real_world": 8,
+        "not_real_world": 2,
+        "not_applicable": 0,
+        "real_world_percent": 80.0
+      },
+      "state": {
+        "real_world": 8,
+        "not_real_world": 2,
+        "not_applicable": 0,
+        "real_world_percent": 80.0
+      },
+      "timing": {
+        "real_world": 4,
+        "not_real_world": 6,
+        "not_applicable": 0,
+        "real_world_percent": 40.0
+      },
+      "unclassified": {
+        "real_world": 0,
+        "not_real_world": 1,
+        "not_applicable": 9,
+        "real_world_percent": 0.0
+      },
+      "usecase": {
+        "real_world": 7,
+        "not_real_world": 3,
+        "not_applicable": 0,
+        "real_world_percent": 70.0
+      }
+    }
+  },
+  "logical_correctness": {
+    "logically_correct": 87,
+    "logically_incorrect": 4,
+    "not_applicable": 9,
+    "logical_correctness_percent": 95.6
+  },
+  "confidence_analysis": {
+    "avg_confidence_correct": 0.831,
+    "avg_confidence_incorrect": 0.844,
+    "correct_samples": 92,
+    "incorrect_samples": 8
+  }
+}
