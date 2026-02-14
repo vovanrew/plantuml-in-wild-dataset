@@ -125,7 +125,8 @@ SUPPORTED_DIAGRAM_TYPES = {
     'activity', 'object', 'deployment', 'state', 'timing'
 }
 
-# Note: activity diagrams use partition/group containers, not a specific element type
+# Note: activity diagrams are excluded from implicit detection (actions are
+# behavioral steps counted via connections, not structural elements)
 IMPLICIT_DEFAULTS = {
     'sequence': 'participant',
     'class': 'class',
@@ -133,7 +134,6 @@ IMPLICIT_DEFAULTS = {
     'component': 'component',
     'deployment': 'node',
     'state': 'state',
-    'activity': 'partition',
     'object': 'object',
     'timing': 'participant',
 }
@@ -690,8 +690,13 @@ def count_elements(content: str, primary_type: str = 'class') -> Dict[str, int]:
         content_without_bodies = strip_member_bodies(content)
         extract_creole_actor(content_without_bodies, elements, declared_names, alias_map)
 
-    implicit_type = IMPLICIT_DEFAULTS.get(primary_type, 'class')
-    extract_implicit(content, elements, declared_names, alias_map, implicit_type, primary_type)
+    # Skip implicit element detection for activity diagrams.
+    # Activity diagram nodes (actions) are behavioral steps, not structural entities.
+    # Their complexity is captured by connection counts (flow arrows) instead.
+    # Note: explicit containers (partition, package) are still detected above.
+    if primary_type != 'activity':
+        implicit_type = IMPLICIT_DEFAULTS.get(primary_type, 'class')
+        extract_implicit(content, elements, declared_names, alias_map, implicit_type, primary_type)
 
     return {t: len(names) for t, names in elements.items() if names}
 

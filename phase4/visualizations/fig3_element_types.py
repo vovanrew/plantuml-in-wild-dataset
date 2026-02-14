@@ -24,7 +24,7 @@ BAR_COLOR = '#4A90A4'
 TOP_N = 15  # Show top 15 element types
 
 # Paths
-DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/relationship_counts.json')
+DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json')
 OUTPUT_PATH = Path(__file__).parent / 'fig3_element_types.png'
 
 

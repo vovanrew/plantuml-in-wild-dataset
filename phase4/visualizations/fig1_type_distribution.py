@@ -11,7 +11,7 @@ import matplotlib as mpl
 from pathlib import Path
 
 # Data source path
-DATA_PATH = Path("/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/relationship_counts.json")
+DATA_PATH = Path("/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json")
 OUTPUT_PATH = Path(__file__).parent / "fig1_type_distribution.png"
 
 # MDPI specifications

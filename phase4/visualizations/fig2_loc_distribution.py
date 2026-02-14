@@ -21,7 +21,7 @@ MIN_FONT_SIZE = 8
 BAR_COLOR = '#4A90A4'
 
 # Paths
-DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/relationship_counts.json')
+DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json')
 OUTPUT_PATH = Path(__file__).parent / 'fig2_loc_distribution.png'
 
 

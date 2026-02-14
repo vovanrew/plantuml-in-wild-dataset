@@ -4,7 +4,7 @@ Shared preprocessing utilities for PlantUML analysis scripts.
 This module provides consistent content preprocessing across:
 - classify_with_llm.py (diagram classification)
 - count_elements.py (element counting)
-- count_relationships.py (relationship counting)
+- count_connections.py (connection counting)
 
 All functions handle PlantUML-specific syntax for comments, styling,
 sprites, and notes to avoid false positives in analysis.
@@ -239,17 +239,17 @@ def strip_preprocessor_directives(content: str) -> str:
         flags=re.MULTILINE
     )
 
-    # Remove !procedure...!endprocedure blocks
+    # Remove !procedure...!endprocedure blocks (including !unquoted procedure)
     content = re.sub(
-        r'!procedure\b.*?!endprocedure',
+        r'!(?:unquoted\s+)?procedure\b.*?!endprocedure',
         '',
         content,
         flags=re.DOTALL | re.IGNORECASE
     )
 
-    # Remove !function...!endfunction blocks
+    # Remove !function...!endfunction blocks (including !unquoted function)
     content = re.sub(
-        r'!function\b.*?!endfunction',
+        r'!(?:unquoted\s+)?function\b.*?!endfunction',
         '',
         content,
         flags=re.DOTALL | re.IGNORECASE
@@ -334,6 +334,62 @@ def strip_member_bodies(content: str) -> str:
             i += 1
 
     return ''.join(result)
+
+
+def strip_salt_blocks(content: str) -> str:
+    """
+    Remove salt wireframe blocks to avoid false keyword detection.
+
+    Salt wireframes use [Button] syntax for buttons, which conflicts
+    with PlantUML's [Component] bracket notation. Stripping salt content
+    prevents false component detection from button labels.
+
+    Handles:
+    - Standalone: @startsalt ... @endsalt
+    - Embedded in strings: {{ salt { ... } }}
+
+    Args:
+        content: PlantUML content
+
+    Returns:
+        Content with salt blocks removed
+    """
+    # Remove @startsalt ... @endsalt blocks
+    content = re.sub(
+        r'@startsalt\b.*?@endsalt\b',
+        '',
+        content,
+        flags=re.DOTALL
+    )
+
+    # Remove embedded salt blocks: {{ salt ... }}
+    # These appear inside quoted strings in activity/state diagrams
+    content = re.sub(
+        r'\{\{\s*\n?\s*salt\b.*?\}\}',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    return content
+
+
+def strip_link_syntax(content: str) -> str:
+    """
+    Remove PlantUML hyperlink syntax to avoid false bracket component detection.
+
+    PlantUML [[url text]] links use double brackets that can be mistaken for
+    [Component] bracket notation when the opening [[ falls at line start
+    (e.g., in macro calls with line continuations).
+
+    Args:
+        content: PlantUML content
+
+    Returns:
+        Content with [[url text]] links removed
+    """
+    content = re.sub(r'\[\[[^\]]*\]\]', '', content)
+    return content
 
 
 def strip_notes(content: str) -> str:
@@ -461,8 +517,9 @@ def preprocess_content(content: str) -> str:
     2. Styling blocks (skinparam, hide/show, style)
     3. Sprite definitions (hex/raster, SVG)
     4. Preprocessor directives (!define, !include, !procedure, !function)
-    5. Note blocks (single-line, multi-line, floating)
-    6. Footer/header/title/legend blocks (documentation, tool credits)
+    5. Salt wireframe blocks ([Button] conflicts with [Component] notation)
+    6. Note blocks (single-line, multi-line, floating)
+    7. Footer/header/title/legend blocks (documentation, tool credits)
 
     Args:
         content: Raw PlantUML content
@@ -474,6 +531,8 @@ def preprocess_content(content: str) -> str:
     content = strip_styling_blocks(content)
     content = strip_sprite_blocks(content)
     content = strip_preprocessor_directives(content)
+    content = strip_salt_blocks(content)
+    content = strip_link_syntax(content)
     content = strip_notes(content)
     content = strip_footer_header(content)
     return content

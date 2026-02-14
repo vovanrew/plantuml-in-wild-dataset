@@ -340,85 +340,111 @@ def generate_markdown_report(analysis: Dict) -> str:
 
 
 def create_visualizations(analysis: Dict, output_dir: Path):
-    """Generate visualization plots (requires matplotlib)."""
+    """Generate MDPI-compliant visualization plots (requires matplotlib)."""
     try:
         import matplotlib.pyplot as plt
-        import matplotlib
-        matplotlib.use('Agg')  # Non-interactive backend
+        import matplotlib as mpl
+        mpl.use('Agg')  # Non-interactive backend
     except ImportError:
         print("Warning: matplotlib not installed. Skipping visualizations.", file=sys.stderr)
         return
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # MDPI style constants (matching fig1/fig2)
+    DPI = 600
+    FIGURE_WIDTH_INCHES = 180 / 25.4  # 180mm
+    BAR_COLOR = '#4A90A4'
+    OVERALL_LINE_COLOR = '#808080'
+
+    mpl.rcParams.update({
+        'font.family': 'Arial',
+        'font.size': 8,
+        'axes.labelsize': 10,
+        'xtick.labelsize': 9,
+        'ytick.labelsize': 9,
+    })
+
+    def _save(fig, name):
+        fig.savefig(output_dir / name, dpi=DPI, bbox_inches='tight',
+                    facecolor='white', edgecolor='none')
+        plt.close(fig)
+        print(f"  Saved: {output_dir / name}", file=sys.stderr)
+
+    def _style_ax(ax):
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
     # 1. Per-type accuracy bar chart
     acc = analysis['classification_accuracy']['per_type_accuracy']
     types = list(acc.keys())
     accuracies = [acc[t]['accuracy_percent'] for t in types]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(types, accuracies, color='steelblue', edgecolor='black')
-    ax.axhline(y=analysis['classification_accuracy']['overall_accuracy_percent'],
-               color='red', linestyle='--', label=f"Overall: {analysis['classification_accuracy']['overall_accuracy_percent']}%")
-    ax.set_xlabel('Diagram Type')
-    ax.set_ylabel('Accuracy (%)')
-    ax.set_title('Classification Accuracy by Diagram Type')
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_WIDTH_INCHES * 0.6))
+    bars = ax.bar(types, accuracies, color=BAR_COLOR, edgecolor='none')
+    overall = analysis['classification_accuracy']['overall_accuracy_percent']
+    ax.axhline(y=overall, color=OVERALL_LINE_COLOR, linestyle='--', linewidth=0.8)
+    ax.annotate(f'Overall: {overall}%',
+                xy=(0.98, overall), xycoords=('axes fraction', 'data'),
+                ha='right', va='bottom', fontsize=8,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
+                         edgecolor='gray', alpha=0.9))
+    ax.set_xlabel('Diagram Type', fontsize=10)
+    ax.set_ylabel('Accuracy (%)', fontsize=10)
     ax.set_ylim(0, 105)
-    ax.legend()
+    _style_ax(ax)
     plt.xticks(rotation=45, ha='right')
 
-    # Add value labels on bars
     for bar, val in zip(bars, accuracies):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
-                f'{val}%', ha='center', va='bottom', fontsize=9)
+                f'{val}%', ha='center', va='bottom', fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_dir / 'accuracy_by_type.png', dpi=150)
-    plt.close()
-    print(f"  Saved: {output_dir / 'accuracy_by_type.png'}", file=sys.stderr)
+    _save(fig, 'accuracy_by_type.png')
 
-    # 2. Real-world distribution pie chart
+    # 2. Real-world distribution bar chart
     rw = analysis['real_world_analysis']
-    fig, ax = plt.subplots(figsize=(8, 6))
+    categories = ['Real-world\nproduction', 'Tutorials/\nlearning', 'N/A\n(sprites)']
     sizes = [rw['real_world'], rw['not_real_world'], rw['not_applicable']]
-    labels = ['Real-world\nproduction', 'Tutorials/\nlearning', 'N/A\n(sprites)']
-    colors = ['#2ecc71', '#e74c3c', '#95a5a6']
-    explode = (0.02, 0.02, 0.02)
+    total = sum(sizes)
 
-    wedges, texts, autotexts = ax.pie(sizes, explode=explode, labels=labels, colors=colors,
-                                       autopct='%1.1f%%', startangle=90)
-    ax.set_title('Real-World vs Tutorial/Learning Content')
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_WIDTH_INCHES * 0.6))
+    bars = ax.bar(categories, sizes, color=BAR_COLOR, edgecolor='none')
+    ax.set_ylabel('Number of Diagrams', fontsize=10)
+    _style_ax(ax)
+
+    for bar, count in zip(bars, sizes):
+        pct = (count / total) * 100
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+                f'{count}\n({pct:.1f}%)', ha='center', va='bottom', fontsize=8)
+
     plt.tight_layout()
-    plt.savefig(output_dir / 'real_world_distribution.png', dpi=150)
-    plt.close()
-    print(f"  Saved: {output_dir / 'real_world_distribution.png'}", file=sys.stderr)
+    _save(fig, 'real_world_distribution.png')
 
     # 3. Real-world percentage by type (horizontal bar)
     rw_by_type = analysis['real_world_analysis']['by_type']
-    # Filter out types with no classifiable samples
     filtered = {k: v for k, v in rw_by_type.items() if v['real_world_percent'] is not None}
     sorted_types = sorted(filtered.keys(), key=lambda x: filtered[x]['real_world_percent'])
     percentages = [filtered[t]['real_world_percent'] for t in sorted_types]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(sorted_types, percentages, color='teal', edgecolor='black')
-    ax.axvline(x=rw['real_world_percent'], color='red', linestyle='--',
-               label=f"Overall: {rw['real_world_percent']}%")
-    ax.set_xlabel('Real-World Percentage (%)')
-    ax.set_ylabel('Diagram Type')
-    ax.set_title('Real-World Content by Diagram Type')
+    fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_WIDTH_INCHES * 0.55))
+    bars = ax.barh(sorted_types, percentages, color=BAR_COLOR, edgecolor='none', height=0.7)
+    ax.axvline(x=rw['real_world_percent'], color=OVERALL_LINE_COLOR, linestyle='--', linewidth=0.8)
+    ax.annotate(f'Overall: {rw["real_world_percent"]}%',
+                xy=(0.98, 0.95), xycoords='axes fraction',
+                ha='right', va='top', fontsize=8,
+                bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
+                         edgecolor='gray', alpha=0.9))
+    ax.set_xlabel('Real-World Percentage (%)', fontsize=10)
     ax.set_xlim(0, 105)
-    ax.legend(loc='lower right')
+    _style_ax(ax)
 
-    # Add value labels
     for bar, val in zip(bars, percentages):
         ax.text(val + 1, bar.get_y() + bar.get_height()/2,
-                f'{val}%', ha='left', va='center', fontsize=9)
+                f'{val}%', ha='left', va='center', fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(output_dir / 'real_world_by_type.png', dpi=150)
-    plt.close()
-    print(f"  Saved: {output_dir / 'real_world_by_type.png'}", file=sys.stderr)
+    _save(fig, 'real_world_by_type.png')
 
 
 def main():
@@ -457,8 +483,8 @@ def main():
     parser.add_argument(
         "--viz-output",
         type=Path,
-        default=Path("phase4/visualization"),
-        help="Output directory for plots (default: phase4/visualization)"
+        default=Path(__file__).parent.parent / "visualizations",
+        help="Output directory for plots (default: phase4/visualizations)"
     )
 
     args = parser.parse_args()

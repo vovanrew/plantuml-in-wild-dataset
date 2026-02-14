@@ -224,7 +224,9 @@ The counter recognizes 50+ element types across categories:
 - `:ActorName:` - creole syntax for actors
 - `(UseCaseName)` - parenthesis notation for use cases
 
-**Implicit Detection**: Elements inferred from relationship usage (e.g., `A --> B` implies A and B exist). Implicit element types are assigned based on the diagram's primary classification.
+**Implicit Detection**: Elements inferred from connection usage (e.g., `A --> B` implies A and B exist). Implicit element types are assigned based on the diagram's primary classification.
+
+**Activity Diagram Limitation**: Implicit element detection is skipped for activity diagrams. In UML, activity diagram nodes between arrows are *actions* — behavioral steps analogous to messages in sequence diagrams, not structural entities like classes or components. Only explicit structural containers (e.g., `partition`, `package`) are counted as elements for activity diagrams. This avoids inflating activity diagram element counts relative to other diagram types and ensures cross-type comparability of element metrics.
 
 #### 6.3.3 Deduplication
 
@@ -256,9 +258,9 @@ Global deduplication ensures each unique element is counted once:
 | object | 27,127 | 2.4% |
 | abstract class | 25,051 | 2.2% |
 
-### 6.4 Relationship Counting
+### 6.4 Connection Counting
 
-Relationships (arrows/connections) are counted and categorized by diagram type.
+Connections (arrows and implicit flows) are counted and categorized by diagram type.
 
 #### 6.4.1 Arrow Pattern Detection
 
@@ -270,24 +272,30 @@ The counter recognizes 20+ arrow patterns including:
 - Dependency: `..>`, `<..`
 - Bidirectional: `<-->`
 
-#### 6.4.2 Category Mapping
+#### 6.4.2 Activity Diagram Connection Counting
 
-Relationships are grouped into semantic categories based on diagram type:
+PlantUML supports two activity diagram syntaxes. The legacy syntax uses explicit arrows between quoted action names (`"Login" --> "Dashboard"`), which are counted reliably by the arrow patterns above. The newer beta syntax (recommended since 2014) uses `:action;` notation with implicit sequential flow — no arrows between consecutive actions. Branching (`if/else`), looping (`while`), and forking (`fork/endfork`) create additional implicit connections that are not represented as arrows in the source text.
+
+Manual validation on 30 activity diagrams revealed that the arrow-based counter achieves 100% accuracy on legacy-syntax diagrams but captures only ~52% of actual connections in beta-syntax diagrams (which constitute ~70% of activity diagrams in the dataset). Because this systematic undercounting cannot be corrected without a full PlantUML preprocessor, **beta-syntax activity diagrams are excluded from connection statistics**. The counter detects beta syntax by scanning for `:action;` patterns and `start`/`stop`/`end` keywords; diagrams using this syntax receive a `beta_activity_skipped` note in the metadata instead of a connection count. Legacy activity diagrams remain fully counted.
+
+#### 6.4.3 Category Mapping
+
+Connections are grouped into semantic categories based on diagram type:
 
 | Category | Diagram Types | Meaning |
 |----------|---------------|---------|
 | structural | class, object, component, deployment | Inheritance, composition, dependencies |
 | message | sequence, timing | Communication between participants |
 | flow | state, activity | Transitions and control flow |
-| association | usecase | Actor-usecase relationships |
+| association | usecase | Actor-usecase connections |
 
-#### 6.4.3 Relationship Statistics
+#### 6.4.4 Connection Statistics
 
 | Metric | Value |
 |--------|-------|
-| Diagrams with relationships | 113,873 (70.2%) |
-| Total relationships detected | 1,198,771 |
-| Average relationships/diagram | 10.5 |
+| Diagrams with connections | 113,873 (70.2%) |
+| Total connections detected | 1,198,771 |
+| Average connections/diagram | 10.5 |
 
 **Distribution by Category**:
 
@@ -298,18 +306,13 @@ Relationships are grouped into semantic categories based on diagram type:
 | flow | 82,113 | 6.8% |
 | association | 47,355 | 4.0% |
 
-### 6.5 Classification Validation
+### 6.5 Manual Quality Assessment
 
-#### 6.5.1 Manual Validation Protocol
+A stratified random sample of 100 diagrams (10 per diagram type) was manually reviewed by domain experts to assess both the accuracy of the automated classification pipeline and the overall quality of the dataset content. Each diagram was evaluated on three criteria described below.
 
-A stratified random sample of 100 diagrams (10 per diagram type) was manually
-reviewed by domain experts. Each diagram was evaluated on three criteria:
+#### 6.5.1 Classification Accuracy
 
-1. **Classification correctness**: Whether the LLM-assigned type matches the actual diagram type
-2. **Real-world relevance**: Whether the diagram documents actual software (vs. tutorials, learning exercises, or templates)
-3. **Logical correctness**: Whether the diagram represents valid, meaningful content (vs. placeholders with generic names)
-
-#### 6.5.2 Classification Accuracy
+The primary goal of manual validation was to verify the LLM-assigned diagram type labels. A diagram was marked as correctly classified when the assigned UML type matched the reviewer's judgment based on the diagram's structure and semantics.
 
 | Metric | Result |
 |--------|--------|
@@ -332,40 +335,6 @@ reviewed by domain experts. Each diagram was evaluated on three criteria:
 | unclassified | 10 | 10 | 100.0% |
 | usecase | 10 | 10 | 100.0% |
 
-#### 6.5.3 Error Analysis
-
-The 8 misclassifications fell into three categories:
-
-1. **Component/Deployment confusion** (2 cases): PlantUML's node/component syntax overlap causes boundary ambiguity
-2. **Sequence/Activity confusion** (1 case): Step-by-step processes documented using sequence syntax
-3. **Object type over-assignment** (5 cases): Non-UML PlantUML extensions (ERD, JSON, Salt) misclassified as object
-
-#### 6.5.4 Real-World Content Analysis
-
-| Category | Count | Percentage |
-|----------|-------|------------|
-| Real-world production diagrams | 58 | 63.7% |
-| Tutorials/learning/templates | 33 | 36.3% |
-| Not applicable (sprite libraries) | 9 | — |
-
-**Real-world by Type**:
-
-| Type | Real-world | Not Real-world | % Real-world |
-|------|------------|----------------|--------------|
-| object | 8 | 2 | 80.0% |
-| sequence | 8 | 2 | 80.0% |
-| state | 8 | 2 | 80.0% |
-| deployment | 7 | 3 | 70.0% |
-| usecase | 7 | 3 | 70.0% |
-| component | 6 | 4 | 60.0% |
-| activity | 5 | 5 | 50.0% |
-| class | 5 | 5 | 50.0% |
-| timing | 4 | 6 | 40.0% |
-
-#### 6.5.5 Logical Correctness
-
-Of the 91 classifiable diagrams, **95.6%** (87) contained valid, meaningful content rather than placeholder templates.
-
 ## 7. Metadata and Reproducibility
 
 ### 7.1 Metadata Structure
@@ -377,7 +346,7 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Diagram type**: LLM classification result with confidence score
 - **Line metrics**: `content_lines` and `comment_lines` counts
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
-- **Relationship counts**: Per-category relationship counts (e.g., `{"structural": 12}`)
+- **Connection counts**: Per-category connection counts (e.g., `{"structural": 12}`)
 - **Consistency score**: Validation score (0.0-1.0) indicating classification confidence
 - **Validation flags**: Any detected issues from cross-validation
 

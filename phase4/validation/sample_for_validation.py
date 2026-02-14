@@ -6,13 +6,12 @@ Selects a representative sample of diagrams (10 per type) for manual review
 and exports them with metadata for validation.
 
 Usage:
-    python3 sample_for_validation.py --classifications final_merged_results.json --output validation_sample/
-    python3 sample_for_validation.py --classifications final_merged_results.json --output validation_sample/ --per-type 10
+    python3 sample_for_validation.py --classifications connection_counts.json --output validation_sample/
+    python3 sample_for_validation.py --classifications connection_counts.json --output validation_sample/ --per-type 10
 """
 
 import argparse
 import json
-import os
 import random
 import shutil
 import sys
@@ -63,10 +62,16 @@ def stratified_sample(
     return sampled
 
 
+def format_dict(d: Dict[str, int]) -> str:
+    """Format a dict of counts as a readable string for CSV."""
+    if not d:
+        return ''
+    return '; '.join(f'{k}: {v}' for k, v in sorted(d.items()))
+
+
 def export_sample(
     sampled: Dict[str, List[str]],
     classifications: Dict[str, Dict],
-    blob_metadata: Dict[str, Dict],
     output_dir: Path,
     puml_base: Path = None,
     images_base: Path = None
@@ -75,7 +80,7 @@ def export_sample(
     Export sampled files with metadata for manual validation.
 
     Creates:
-    - validation_sample.csv: Spreadsheet for manual review
+    - validation_sample.psv: Pipe-delimited file for manual review
     - validation_sample.json: Full metadata for each sample
     - puml/: Copied PUML source files (if available)
     - images/: Copied PNG images (if available)
@@ -83,7 +88,6 @@ def export_sample(
     Args:
         sampled: Dictionary mapping type to list of filenames
         classifications: Full classification data
-        blob_metadata: Blob metadata dictionary
         output_dir: Output directory path
         puml_base: Base path to PUML files (optional)
         images_base: Base path to PNG images (optional)
@@ -103,26 +107,23 @@ def export_sample(
             sample_id += 1
             data = classifications[filename]
 
-            # Extract blob_id from filename (remove .puml extension)
-            blob_id = filename.replace('.puml', '').split('_')[0]
-
-            # Get original file path from blob metadata
-            meta = blob_metadata.get(blob_id, {})
-            original_path = meta.get('file_path', 'unknown')
-
             record = {
                 'sample_id': sample_id,
                 'filename': filename,
-                'blob_id': blob_id,
-                'original_path': original_path,
                 'classified_type': data.get('primary_type', ''),
-                'confidence': data.get('confidence', 0.0),
-                'reasoning': data.get('reasoning', ''),
+                'content_lines': data.get('content_lines', 0),
+                'elements': data.get('elements', {}),
+                'total_elements': data.get('total_elements', 0),
+                'connections': data.get('connections', {}),
+                'total_connections': data.get('total_connections', 0),
                 # Fields to fill during manual review
-                'correct_type': '',  # Human reviewer fills this
-                'classification_correct': '',  # Yes/No
-                'is_real_world_diagram': '',  # Yes/No/Unclear
-                'notes': ''
+                'actual_type': '',
+                'elements_correct': '',
+                'actual_elements': '',
+                'actual_elements_count': '',
+                'connections_correct': '',
+                'actual_connections': '',
+                'actual_connections_count': '',
             }
             records.append(record)
 
@@ -132,32 +133,43 @@ def export_sample(
                 if puml_src.exists():
                     shutil.copy2(puml_src, output_dir / 'puml' / filename)
 
-            # Copy image file if available (try both .png variants)
+            # Copy image file if available
             if images_base:
-                # Try direct match
                 img_name = filename.replace('.puml', '.png')
                 img_src = images_base / img_name
                 if img_src.exists():
                     shutil.copy2(img_src, output_dir / 'images' / img_name)
 
-    # Write CSV for manual review
-    csv_path = output_dir / 'validation_sample.csv'
-    with open(csv_path, 'w', encoding='utf-8') as f:
-        headers = ['sample_id', 'filename', 'classified_type', 'confidence',
-                   'classification_correct', 'correct_type', 'is_real_world_diagram', 'notes']
-        f.write(','.join(headers) + '\n')
+    # Write PSV for manual review
+    psv_path = output_dir / 'validation_sample.csv'
+    with open(psv_path, 'w', encoding='utf-8') as f:
+        headers = ['sample_id', 'filename', 'classified_type', 'content_lines',
+                   'elements', 'total_elements', 'connections', 'total_connections',
+                   'actual_type', 'elements_correct', 'actual_elements',
+                   'actual_elements_count', 'connections_correct',
+                   'actual_connections', 'actual_connections_count']
+        f.write('|'.join(headers) + '\n')
         for r in records:
+            elements_str = format_dict(r['elements'])
+            connections_str = format_dict(r['connections'])
             row = [
                 str(r['sample_id']),
                 r['filename'],
                 r['classified_type'],
-                f"{r['confidence']:.2f}",
-                r['classification_correct'],
-                r['correct_type'],
-                r['is_real_world_diagram'],
-                f'"{r["notes"]}"' if r['notes'] else ''
+                str(r['content_lines']),
+                elements_str,
+                str(r['total_elements']),
+                connections_str,
+                str(r['total_connections']),
+                r['actual_type'],
+                r['elements_correct'],
+                r['actual_elements'],
+                str(r['actual_elements_count']) if r['actual_elements_count'] != '' else '',
+                r['connections_correct'],
+                r['actual_connections'],
+                str(r['actual_connections_count']) if r['actual_connections_count'] != '' else '',
             ]
-            f.write(','.join(row) + '\n')
+            f.write('|'.join(row) + '\n')
 
     # Write full JSON metadata
     json_path = output_dir / 'validation_sample.json'
@@ -172,7 +184,7 @@ def export_sample(
         }, f, indent=2, ensure_ascii=False)
 
     print(f"\nExported {len(records)} samples to {output_dir}", file=sys.stderr)
-    print(f"  - CSV: {csv_path}", file=sys.stderr)
+    print(f"  - PSV: {psv_path}", file=sys.stderr)
     print(f"  - JSON: {json_path}", file=sys.stderr)
 
 
@@ -186,14 +198,7 @@ def main():
         "--classifications", "-c",
         type=Path,
         required=True,
-        help="Path to final_merged_results.json"
-    )
-
-    parser.add_argument(
-        "--blob-metadata", "-b",
-        type=Path,
-        default=None,
-        help="Path to blob_metadata.json (optional, for original file paths)"
+        help="Path to connection_counts.json"
     )
 
     parser.add_argument(
@@ -239,13 +244,6 @@ def main():
 
     print(f"Loaded {len(classifications)} classifications", file=sys.stderr)
 
-    # Load blob metadata if provided
-    blob_metadata = {}
-    if args.blob_metadata and args.blob_metadata.exists():
-        print(f"Loading blob metadata from {args.blob_metadata}...", file=sys.stderr)
-        with open(args.blob_metadata, 'r', encoding='utf-8') as f:
-            blob_metadata = json.load(f)
-
     # Perform stratified sampling
     print(f"\nStratified sampling ({args.per_type} per type):", file=sys.stderr)
     sampled = stratified_sample(classifications, args.per_type, args.seed)
@@ -254,7 +252,6 @@ def main():
     export_sample(
         sampled,
         classifications,
-        blob_metadata,
         args.output,
         args.puml_dir,
         args.images_dir
@@ -265,9 +262,9 @@ def main():
     print(f"\nTotal samples: {total}", file=sys.stderr)
     print(f"Types covered: {len(sampled)}", file=sys.stderr)
     print("\nNext steps:", file=sys.stderr)
-    print("1. Review each diagram in validation_sample.csv", file=sys.stderr)
-    print("2. Fill in 'classification_correct' (Yes/No)", file=sys.stderr)
-    print("3. Fill in 'is_real_world_diagram' (Yes/No/Unclear)", file=sys.stderr)
+    print("1. Review each diagram in validation_sample.psv", file=sys.stderr)
+    print("2. Fill in 'actual_type' if classified_type is wrong", file=sys.stderr)
+    print("3. Fill in 'elements_correct' / 'connections_correct' (Yes/No)", file=sys.stderr)
     print("4. Run analyze_validation_results.py to compute accuracy", file=sys.stderr)
 
 
