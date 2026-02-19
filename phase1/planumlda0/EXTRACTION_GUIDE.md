@@ -102,10 +102,6 @@ scp da0:/data/play/vopolva/plantuml_extraction/valid_plantuml_content.gz .
 scp da0:/data/play/vopolva/plantuml_extraction/plantuml_stats.json .
 ```
 
-**Expected file size:**
-- `valid_plantuml_content.gz`: ~40-60 MB (depending on valid count)
-- `plantuml_stats.json`: <1 KB
-
 ### Step 4: Decode Content (On Local Machine)
 
 Convert the base64-encoded content to individual PlantUML files:
@@ -237,22 +233,13 @@ This is normal! Some blobs may be:
 
 Check `error_blobs.txt` for details on which blobs failed and why.
 
-## Next Steps
-
-After extraction, you can:
-
-1. **Analyze PlantUML content** - Study diagram types, patterns, complexity
-2. **Map to projects** - Use blob IDs to join with WoC project data
-3. **Extract metrics** - Count classes, relationships, diagram types
-4. **Train models** - Use as dataset for ML/AI research
-
 ## Additional Resources
 
 - [World of Code Documentation](https://github.com/woc-hack/tutorial)
 - [python-woc Repository](https://github.com/ssc-oscar/python-woc)
 - [PlantUML Documentation](https://plantuml.com/)
 
-## Support
+## Issues
 
 If you encounter issues:
 

@@ -127,7 +127,7 @@ We developed an LLM-based classifier using Claude Haiku 4.5 to categorize PlantU
 #### 6.2.1 Supported Diagram Types
 
 The classifier identifies 10 diagram categories:
-- **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object, timing
+- **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object
 - **Unclassified**: Diagrams without recognizable UML patterns (library files, sprites, minimal content)
 
 #### 6.2.2 Preprocessing Pipeline
@@ -174,12 +174,7 @@ The prompt instructs the model to identify diagrams based on characteristic feat
 | object | `object`, `map`, field assignments |
 | timing | `@time`, `robust`, `concise` |
 
-#### 6.2.5 Classification Performance
-
-| Metric | Result |
-|--------|--------|
-| Total files processed | 162,257 |
-| Average confidence | 0.867 |
+#### 6.2.5 Classification Stats
 
 **Type Distribution**:
 
@@ -196,144 +191,8 @@ The prompt instructs the model to identify diagrams based on characteristic feat
 | state | 4,359 | 2.7% |
 | timing | 286 | 0.2% |
 
-### 6.3 Element Counting
-
-We implemented automated element detection to quantify diagram complexity and validate classifications.
-
-#### 6.3.1 Supported Element Types
-
-The counter recognizes 50+ element types across categories:
-
-**Class Diagram**: `class`, `abstract class`, `interface`, `enum`, `annotation`, `struct`, `protocol`, `exception`, `metaclass`
-
-**Sequence Diagram**: `participant`, `actor`, `boundary`, `control`, `entity`, `database`, `collections`, `queue`
-
-**Use Case Diagram**: `usecase`, `actor`
-
-**Component/Deployment**: `component`, `node`, `artifact`, `cloud`, `database`, `storage`, `folder`, `frame`
-
-**Containers**: `package`, `namespace`, `rectangle`, `partition`, `box`, `group`
-
-#### 6.3.2 Detection Methods
-
-**Explicit Detection**: Elements declared with keywords (e.g., `class Foo`, `participant Alice`)
-
-**Shorthand Notation**:
-- `[ComponentName]` - bracket notation for components
-- `() InterfaceName` - lollipop notation for interfaces
-- `:ActorName:` - creole syntax for actors
-- `(UseCaseName)` - parenthesis notation for use cases
-
-**Implicit Detection**: Elements inferred from connection usage (e.g., `A --> B` implies A and B exist). Implicit element types are assigned based on the diagram's primary classification.
-
-**Activity Diagram Limitation**: Implicit element detection is skipped for activity diagrams. In UML, activity diagram nodes between arrows are *actions* — behavioral steps analogous to messages in sequence diagrams, not structural entities like classes or components. Only explicit structural containers (e.g., `partition`, `package`) are counted as elements for activity diagrams. This avoids inflating activity diagram element counts relative to other diagram types and ensures cross-type comparability of element metrics.
-
-#### 6.3.3 Deduplication
-
-Global deduplication ensures each unique element is counted once:
-- Case-insensitive name matching
-- Alias resolution (e.g., `participant "Long Name" as LN`)
-- Generic type stripping (`List<String>` → `List`)
-
-#### 6.3.4 Element Statistics
-
-| Metric | Value |
-|--------|-------|
-| Diagrams with elements | 142,394 (87.8%) |
-| Total elements detected | 1,125,618 |
-| Average elements/diagram | 7.9 |
-
-**Top Element Types**:
-
-| Element Type | Count | % of Total |
-|--------------|-------|------------|
-| class | 445,555 | 39.6% |
-| participant | 134,243 | 11.9% |
-| interface | 65,498 | 5.8% |
-| component | 61,988 | 5.5% |
-| actor | 61,873 | 5.5% |
-| package | 55,863 | 5.0% |
-| usecase | 53,058 | 4.7% |
-| state | 34,455 | 3.1% |
-| object | 27,127 | 2.4% |
-| abstract class | 25,051 | 2.2% |
-
-### 6.4 Connection Counting
-
-Connections (arrows and implicit flows) are counted and categorized by diagram type.
-
-#### 6.4.1 Arrow Pattern Detection
-
-The counter recognizes 20+ arrow patterns including:
-- Simple arrows: `-->`, `<--`, `->`, `<-`
-- Async arrows: `->>`, `<<-`
-- Inheritance: `<|--`, `--|>`
-- Composition/aggregation: `*--`, `o--`
-- Dependency: `..>`, `<..`
-- Bidirectional: `<-->`
-
-#### 6.4.2 Activity Diagram Connection Counting
-
-PlantUML supports two activity diagram syntaxes. The legacy syntax uses explicit arrows between quoted action names (`"Login" --> "Dashboard"`), which are counted reliably by the arrow patterns above. The newer beta syntax (recommended since 2014) uses `:action;` notation with implicit sequential flow — no arrows between consecutive actions. Branching (`if/else`), looping (`while`), and forking (`fork/endfork`) create additional implicit connections that are not represented as arrows in the source text.
-
-Manual validation on 30 activity diagrams revealed that the arrow-based counter achieves 100% accuracy on legacy-syntax diagrams but captures only ~52% of actual connections in beta-syntax diagrams (which constitute ~70% of activity diagrams in the dataset). Because this systematic undercounting cannot be corrected without a full PlantUML preprocessor, **beta-syntax activity diagrams are excluded from connection statistics**. The counter detects beta syntax by scanning for `:action;` patterns and `start`/`stop`/`end` keywords; diagrams using this syntax receive a `beta_activity_skipped` note in the metadata instead of a connection count. Legacy activity diagrams remain fully counted.
-
-#### 6.4.3 Category Mapping
-
-Connections are grouped into semantic categories based on diagram type:
-
-| Category | Diagram Types | Meaning |
-|----------|---------------|---------|
-| structural | class, object, component, deployment | Inheritance, composition, dependencies |
-| message | sequence, timing | Communication between participants |
-| flow | state, activity | Transitions and control flow |
-| association | usecase | Actor-usecase connections |
-
-#### 6.4.4 Connection Statistics
-
-| Metric | Value |
-|--------|-------|
-| Diagrams with connections | 113,873 (70.2%) |
-| Total connections detected | 1,198,771 |
-| Average connections/diagram | 10.5 |
-
-**Distribution by Category**:
-
-| Category | Count | % of Total |
-|----------|-------|------------|
-| structural | 623,139 | 52.0% |
-| message | 446,164 | 37.2% |
-| flow | 82,113 | 6.8% |
-| association | 47,355 | 4.0% |
-
-### 6.5 Manual Quality Assessment
-
-A stratified random sample of 100 diagrams (10 per diagram type) was manually reviewed by domain experts to assess both the accuracy of the automated classification pipeline and the overall quality of the dataset content. Each diagram was evaluated on three criteria described below.
-
-#### 6.5.1 Classification Accuracy
-
-The primary goal of manual validation was to verify the LLM-assigned diagram type labels. A diagram was marked as correctly classified when the assigned UML type matched the reviewer's judgment based on the diagram's structure and semantics.
-
-| Metric | Result |
-|--------|--------|
-| Total samples validated | 100 |
-| Correct classifications | 92 |
-| **Overall accuracy** | **92.0%** |
-
-**Per-Type Accuracy**:
-
-| Type | Correct | Total | Accuracy |
-|------|---------|-------|----------|
-| activity | 10 | 10 | 100.0% |
-| class | 10 | 10 | 100.0% |
-| component | 9 | 10 | 90.0% |
-| deployment | 9 | 10 | 90.0% |
-| object | 5 | 10 | 50.0% |
-| sequence | 9 | 10 | 90.0% |
-| state | 10 | 10 | 100.0% |
-| timing | 10 | 10 | 100.0% |
-| unclassified | 10 | 10 | 100.0% |
-| usecase | 10 | 10 | 100.0% |
+# 6.3 Parser-Based Element and Connection Extraction Methodology
+In @classification_and_counting_methodology.md
 
 ## 7. Metadata and Reproducibility
 
