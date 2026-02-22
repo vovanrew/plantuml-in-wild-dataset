@@ -35,18 +35,12 @@ except ImportError:
 # Configuration
 # =============================================================================
 
-INPUT_FILE = "/data/play/vopolva/plantuml_extraction/unique_plantuml_blobs_with_files.gz"
-OUTPUT_DIR = Path("/data/play/vopolva/plantuml_extraction")
-OUTPUT_FILE = OUTPUT_DIR / "valid_plantuml_content.gz"
-STATS_FILE = OUTPUT_DIR / "plantuml_stats.json"
-INVALID_FILE = OUTPUT_DIR / "invalid_blobs.txt"
-ERROR_FILE = OUTPUT_DIR / "error_blobs.txt"
+# Example paths (used on WoC da0 server):
+#   INPUT_FILE = "/data/play/vopolva/plantuml_extraction/unique_plantuml_blobs_with_files.gz"
+#   OUTPUT_DIR = "/data/play/vopolva/plantuml_extraction"
 
 # Number of worker processes
 NUM_WORKERS = mp.cpu_count() // 2  # Use half of available cores
-
-# Batch size for reading input
-BATCH_SIZE = 1000
 
 
 # =============================================================================
@@ -218,15 +212,13 @@ def main():
         description="Extract and validate PlantUML content from WoC blobs"
     )
     parser.add_argument(
-        "-i", "--input",
-        default=INPUT_FILE,
-        help=f"Input file with blob_id;file_path pairs (default: {INPUT_FILE})"
+        "input",
+        help="Input gzipped file with blob_id;file_path pairs (e.g. unique_plantuml_blobs_with_files.gz)"
     )
     parser.add_argument(
-        "-o", "--output-dir",
+        "output_dir",
         type=Path,
-        default=OUTPUT_DIR,
-        help=f"Output directory (default: {OUTPUT_DIR})"
+        help="Output directory for results (e.g. /data/play/vopolva/plantuml_extraction)"
     )
     parser.add_argument(
         "-w", "--workers",

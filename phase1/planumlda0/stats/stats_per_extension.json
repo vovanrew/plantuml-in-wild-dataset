@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "total_valid": 202106,
+    "total_invalid": 163802,
+    "total": 365908,
+    "valid_rate": 55.2
+  },
+  "by_extension": {
+    "(no extension)": {
+      "valid": 0,
+      "invalid": 2,
+      "total": 2,
+      "valid_rate": 0.0
+    },
+    ".iuml": {
+      "valid": 1223,
+      "invalid": 1109,
+      "total": 2332,
+      "valid_rate": 52.4
+    },
+    ".plantuml": {
+      "valid": 21980,
+      "invalid": 746,
+      "total": 22726,
+      "valid_rate": 96.7
+    },
+    ".pu": {
+      "valid": 10004,
+      "invalid": 2472,
+      "total": 12476,
+      "valid_rate": 80.2
+    },
+    ".puml": {
+      "valid": 146851,
+      "invalid": 25766,
+      "total": 172617,
+      "valid_rate": 85.1
+    },
+    ".uml": {
+      "valid": 7186,
+      "invalid": 124998,
+      "total": 132184,
+      "valid_rate": 5.4
+    },
+    ".wsd": {
+      "valid": 14862,
+      "invalid": 8709,
+      "total": 23571,
+      "valid_rate": 63.1
+    }
+  }
+}

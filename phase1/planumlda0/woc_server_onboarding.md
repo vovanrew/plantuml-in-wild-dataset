@@ -510,8 +510,8 @@ zcat /da?_data/basemaps/c2pFull.V3.?.s
 
 ## Additional Resources
 
-- **Tutorial:** `/Users/vovapolischuk/indiehacker/projects/university/lookup/tutorial.md`
-- **README:** `/Users/vovapolischuk/indiehacker/projects/university/lookup/README.md`
+- **Tutorial:** `lookup/tutorial.md`
+- **README:** `lookup/README.md`
 - **WoC Documentation:** https://worldofcode.org/
 
 ---
