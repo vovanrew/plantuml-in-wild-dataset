@@ -10,6 +10,7 @@ Date: 2025-10-30
 
 import argparse
 import base64
+import gzip
 import json
 import logging
 import time
@@ -201,9 +202,10 @@ Examples:
     start_time = time.time()
 
     # Count total lines
+    _open = gzip.open if args.input.endswith('.gz') else open
     logging.info("Counting total lines...")
     try:
-        with open(args.input, 'r', encoding='utf-8') as f:
+        with _open(args.input, 'rt', encoding='utf-8') as f:
             total_lines = sum(1 for _ in f)
         logging.info(f"Total lines to process: {total_lines:,}")
     except FileNotFoundError:
@@ -238,7 +240,7 @@ Examples:
     files_in_batch = 0
 
     try:
-        with open(args.input, 'r', encoding='utf-8') as f:
+        with _open(args.input, 'rt', encoding='utf-8') as f:
             # Initialize progress bar
             iterator = enumerate(f, start=1)
             if tqdm:

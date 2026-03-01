@@ -38,17 +38,20 @@ This validation process filtered out files that had PlantUML-related extensions 
 - **Invalid blobs**: 163,802 (44.6%) - missing required markers (logged separately)
 - **Error blobs**: 1,642 (0.4%) - WoC retrieval failures (logged separately)
 
-## 3. Filtering and Quality Control
+**Validation rate by extension**:
 
-### 3.1 Length-Based Filtering
+| Extension | Valid | Invalid | Total | Valid Rate |
+|-----------|-------|---------|-------|------------|
+| `.plantuml` | 21,980 | 746 | 22,726 | 96.7% |
+| `.puml` | 146,851 | 25,766 | 172,617 | 85.1% |
+| `.pu` | 10,004 | 2,472 | 12,476 | 80.2% |
+| `.wsd` | 14,862 | 8,709 | 23,571 | 63.1% |
+| `.iuml` | 1,223 | 1,109 | 2,332 | 52.4% |
+| `.uml` | 7,186 | 124,998 | 132,184 | 5.4% |
 
-To ensure diagram complexity and completeness, we applied a minimum threshold filter:
-- **Minimum requirement**: 5 non-empty lines of PlantUML code (excluding whitespace)
-- **Rationale**: Eliminates trivial or incomplete diagram fragments
+The validation rates vary significantly across extensions. The `.plantuml` and `.puml` extensions are strong indicators of actual PlantUML content (85–97% valid). In contrast, the generic `.uml` extension has only a 5.4% validation rate, as the vast majority of `.uml` files use other UML formats (e.g., XMI, Eclipse UML).
 
-This filter reduced the dataset to **200,144 PlantUML files** while tracking line count distribution statistics for subsequent analysis.
-
-### 3.2 Deduplication
+## 3. Deduplication
 
 Deduplication was inherently performed at the blob level, as WoC's content-addressable storage ensures that identical file contents share the same SHA-1 hash. This guarantees syntactic uniqueness across the dataset.
 
@@ -56,7 +59,7 @@ Deduplication was inherently performed at the blob level, as WoC's content-addre
 
 ### 4.1 Multi-Diagram Splitting
 
-Many source files contained multiple diagram blocks within a single file. Out of the 200,144 files after length-based filtering, **1,843 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
+Many source files contained multiple diagram blocks within a single file. Out of the 202,106 validated files, **1,843 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
 - Detect multiple `@startuml...@enduml` blocks within a single file
 - Handle case-insensitive variations (`@StartUML`, `@STARTUML`)
 - Support different diagram types (`@startditaa`, `@startsalt`)
@@ -64,7 +67,7 @@ Many source files contained multiple diagram blocks within a single file. Out of
 
 Each diagram block was extracted into a separate file with naming convention `{blob_id}_01.puml`, `{blob_id}_02.puml`, etc., ensuring a one-to-one mapping between files and diagrams.
 
-**Results**: The splitting process increased the total file count from **200,144 to 207,161** individual diagram files, extracting all embedded diagrams from multi-diagram files while preserving single-diagram files unchanged.
+**Results**: The splitting process increased the total file count from **202,106 to 209,123** individual diagram files, extracting all embedded diagrams from multi-diagram files while preserving single-diagram files unchanged.
 
 ### 4.2 Tag Normalization
 
@@ -92,12 +95,12 @@ The compilation process provided syntactic validation of diagram correctness:
 
 | Metric | Count |
 |--------|-------|
-| Total files processed | 207,161 |
-| Successfully compiled | 162,257 (78%) |
-| Compilation errors | 44,803 (22%) |
-| Generated PNG images | 163,589 |
+| Total files processed | 209,123 |
+| Successfully compiled | TBD |
+| Compilation errors | TBD |
+| Generated PNG images | TBD |
 
-The slight excess of images over valid files (163,589 .png vs. 162,257 .puml) is due to the PlantUML `newpage` keyword, which generates multiple images from a single source file.
+The number of generated images may slightly exceed the number of successfully compiled files due to the PlantUML `newpage` keyword, which generates multiple images from a single source file.
 
 Files with compilation errors were logged separately and could serve as a complementary dataset for error analysis and tool improvement research.
 
@@ -113,12 +116,12 @@ We implemented automated analysis to characterize diagram complexity:
 
 | Lines | Count | Percentage |
 |-------|-------|------------|
-| 1-10 | 34,049 | 21.0% |
-| 11-100 | 117,252 | 72.3% |
-| 101-1000 | 10,792 | 6.6% |
-| 1001+ | 148 | 0.1% |
+| 1-10 | TBD | TBD |
+| 11-100 | TBD | TBD |
+| 101-1000 | TBD | TBD |
+| 1001+ | TBD | TBD |
 
-**Summary Statistics**: Mean: 42.5 lines, Median: 24 lines, Q1: 12, Q3: 49
+**Summary Statistics**: TBD
 
 ### 6.2 Diagram Type Classification
 
@@ -223,13 +226,12 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 - Initial candidates (extension-based): 504,451 total file entries
 - After deduplication: 367,550 unique blobs
 - Content-validated: 202,106 blobs (55.0% validation rate)
-- Post-filtering (≥5 lines): 200,144 files
-- After multi-diagram splitting: 207,161 files
-- Successfully compiled: 162,257 diagrams (78% compilation success rate)
-- Generated images: 163,589 PNG files
+- After multi-diagram splitting: 209,123 files
+- Successfully compiled: TBD diagrams
+- Generated images: TBD PNG files
 
 **Dataset Composition**:
-- Total diagrams: 162,257
+- Total diagrams: TBD
 - Format: PNG images + PlantUML source code
 - Metadata: JSON format with blob-level attribution
 
