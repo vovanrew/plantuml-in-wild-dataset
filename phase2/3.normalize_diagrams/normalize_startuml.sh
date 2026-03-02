@@ -121,13 +121,15 @@ main() {
             TOTAL_FILES_PROCESSED=$((TOTAL_FILES_PROCESSED + 1))
 
             # Check if file needs modification
-            # Match either @startuml{...} or @startuml <name> (but not @startuml(...) or @startuml[...])
-            if grep -qE "@startuml(\{[^}]*\}|[[:space:]]+[^(\[])" "${file}" 2>/dev/null; then
-                # Remove @startuml{...} braces (custom names)
-                # Remove @startuml <name> space-separated names
-                # Preserve @startuml(...) and @startuml[...] (valid PlantUML parameters)
-                sed -i '' -E 's/@startuml\{[^}]*\}/@startuml/g' "${file}"
-                sed -i '' -E 's/@startuml[[:space:]]+[^(\[].*/@startuml/' "${file}"
+            # Match any @start tag followed by a name in braces, parens, brackets, or after a space
+            if grep -qE '@start[a-zA-Z]+(\{|[(\[]|[[:space:]]+[^[:space:]])' "${file}" 2>/dev/null; then
+                # Strip custom names that cause PlantUML to use them as output filenames,
+                # breaking our blob-ID-based naming convention
+                # Handle: @startuml{name}, @startuml(name), @startuml[name], @startuml name
+                sed -i '' -E 's/(@start[a-zA-Z]+)\{[^}]*\}/\1/g' "${file}"
+                sed -i '' -E 's/(@start[a-zA-Z]+)\([^)]*\)/\1/g' "${file}"
+                sed -i '' -E 's/(@start[a-zA-Z]+)\[[^]]*\]/\1/g' "${file}"
+                sed -i '' -E 's/(@start[a-zA-Z]+)[[:space:]]+[^[:space:]].*/\1/' "${file}"
                 local_files_modified=$((local_files_modified + 1))
                 TOTAL_FILES_MODIFIED=$((TOTAL_FILES_MODIFIED + 1))
             fi

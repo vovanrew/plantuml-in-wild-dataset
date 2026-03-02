@@ -59,7 +59,7 @@ Deduplication was inherently performed at the blob level, as WoC's content-addre
 
 ### 4.1 Multi-Diagram Splitting
 
-Many source files contained multiple diagram blocks within a single file. Out of the 202,106 validated files, **1,843 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
+Many source files contained multiple diagram blocks within a single file. Out of the 202,106 validated files, **1,842 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
 - Detect multiple `@startuml...@enduml` blocks within a single file
 - Handle case-insensitive variations (`@StartUML`, `@STARTUML`)
 - Support different diagram types (`@startditaa`, `@startsalt`)
@@ -67,18 +67,20 @@ Many source files contained multiple diagram blocks within a single file. Out of
 
 Each diagram block was extracted into a separate file with naming convention `{blob_id}_01.puml`, `{blob_id}_02.puml`, etc., ensuring a one-to-one mapping between files and diagrams.
 
-**Results**: The splitting process increased the total file count from **202,106 to 209,123** individual diagram files, extracting all embedded diagrams from multi-diagram files while preserving single-diagram files unchanged.
+**Results**: The splitting process increased the total file count from **202,106 to 209,122** individual diagram files, extracting all embedded diagrams from multi-diagram files while preserving single-diagram files unchanged.
 
 ### 4.2 Tag Normalization
 
 Custom naming in `@startuml` tags (e.g., `@startuml{name}` or `@startuml name`) causes PlantUML to use the custom name in the output PNG filename rather than the source file name. Since our file naming convention is based on blob IDs (e.g., `{blob_id}.puml` → `{blob_id}.png`), preserving these custom names would break the metadata consistency embedded in filenames.
 
-We normalized these patterns to standard `@startuml` format while preserving valid PlantUML parameters such as `@startuml(id=...)` or `@startuml[scale=...]`. This ensures that:
+We normalized these patterns to standard `@startuml` format, stripping all custom names regardless of syntax (`{name}`, `(name)`, `[name]`, and space-separated names). This ensures that:
 - PNG output files maintain the same blob_id-based naming as their source PUML files
 - Metadata remains accessible through filenames
 - The blob_id to file mapping remains consistent across both formats
 
 Even when the `newpage` keyword generates multiple PNG files from a single PUML source, the outputs follow the pattern `{blob_id}_001.png`, `{blob_id}_002.png`, etc., preserving the blob_id reference with numeric suffixes.
+
+**Results**: Out of 209,122 files, **35,612 (17.0%)** contained custom `@startuml` names and were normalized. The remaining 173,510 files required no modification.
 
 ## 5. Image Generation and Validation
 
@@ -95,7 +97,7 @@ The compilation process provided syntactic validation of diagram correctness:
 
 | Metric | Count |
 |--------|-------|
-| Total files processed | 209,123 |
+| Total files processed | 209,122 |
 | Successfully compiled | TBD |
 | Compilation errors | TBD |
 | Generated PNG images | TBD |
@@ -226,7 +228,7 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 - Initial candidates (extension-based): 504,451 total file entries
 - After deduplication: 367,550 unique blobs
 - Content-validated: 202,106 blobs (55.0% validation rate)
-- After multi-diagram splitting: 209,123 files
+- After multi-diagram splitting: 209,122 files
 - Successfully compiled: TBD diagrams
 - Generated images: TBD PNG files
 

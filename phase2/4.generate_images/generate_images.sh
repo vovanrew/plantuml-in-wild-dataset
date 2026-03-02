@@ -122,8 +122,10 @@ main() {
     fi
     print_success "Found ${FILE_COUNT} .puml files"
 
-    # Create output directory
+    # Create output directory and resolve to absolute path
+    # (PlantUML resolves relative --output-dir relative to input files, not cwd)
     mkdir -p "${OUTPUT_DIR}"
+    OUTPUT_DIR="$(cd "${OUTPUT_DIR}" && pwd)"
     print_success "Output directory: ${OUTPUT_DIR}"
 
     # Check prerequisites

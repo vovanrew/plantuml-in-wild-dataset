@@ -10,10 +10,10 @@ PlantUML image generation expects one diagram per file. Some source files from W
 
 ```bash
 # Split multi-diagram files
-python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originalss
+python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originals
 
 # Preview without making changes
-python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originalss --dry-run
+python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originals --dry-run
 ```
 
 ## Arguments
@@ -21,7 +21,7 @@ python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originalss 
 | Argument | Description |
 |----------|-------------|
 | `puml_dir` (positional) | Directory containing `.puml` files to process |
-| `multi_diagram_originalss_dir` (positional) | Directory to move original multi-diagram files to |
+| `multi_diagram_originals_dir` (positional) | Directory to move original multi-diagram files to |
 | `--dry-run` | Preview changes without splitting or moving files |
 
 ## How It Works
@@ -32,7 +32,7 @@ python3 split_multi_diagrams.py /path/to/puml /path/to/multi_diagram_originalss 
 4. Files with multiple diagrams are:
    - Split into `{blob_id}_01.puml`, `{blob_id}_02.puml`, etc.
    - Each split file gets the original header comments (Blob ID, Original Path, Source)
-   - The original file is moved to the `multi_diagram_originalss_dir` directory
+   - The original file is moved to the `multi_diagram_originals_dir` directory
 
 ## Example
 
@@ -52,7 +52,7 @@ class B
 Output:
 - `abc123def_01.puml` — header + class A diagram
 - `abc123def_02.puml` — header + class B diagram
-- Original moved to `multi_diagram_originalss/abc123def.puml`
+- Original moved to `multi_diagram_originals/abc123def.puml`
 
 ## Results
 
