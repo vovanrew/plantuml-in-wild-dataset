@@ -47,7 +47,27 @@ def get_image_stems(images_dir: Path) -> Set[str]:
     return image_stems
 
 
-def check_puml_has_image(puml_stem: str, image_stems: Set[str]) -> bool:
+def build_multipage_bases(image_stems: Set[str]) -> Set[str]:
+    """
+    Extract base stems from multi-page image filenames.
+
+    E.g., "diagram_001", "diagram_002" -> {"diagram"}
+
+    Args:
+        image_stems: Set of all image file stems
+
+    Returns:
+        Set of base stems that have multi-page images
+    """
+    bases = set()
+    for stem in image_stems:
+        parts = stem.rsplit("_", 1)
+        if len(parts) == 2 and parts[1].isdigit() and len(parts[1]) == 3:
+            bases.add(parts[0])
+    return bases
+
+
+def check_puml_has_image(puml_stem: str, image_stems: Set[str], multipage_bases: Set[str]) -> bool:
     """
     Check if a PUML file has at least one corresponding image.
 
@@ -58,26 +78,12 @@ def check_puml_has_image(puml_stem: str, image_stems: Set[str]) -> bool:
     Args:
         puml_stem: PUML filename without extension (e.g., "diagram")
         image_stems: Set of all image file stems
+        multipage_bases: Set of base stems from multi-page images
 
     Returns:
         True if at least one corresponding image exists, False otherwise
     """
-    # Check exact match first
-    if puml_stem in image_stems:
-        return True
-
-    # Check for multi-page pattern: {puml_name}_001, {puml_name}_002, etc.
-    # We only need to find at least ONE matching image
-    for img_stem in image_stems:
-        # Check if image starts with puml_stem followed by _XXX
-        if img_stem.startswith(puml_stem + "_"):
-            # Extract suffix after puml_stem_
-            suffix = img_stem[len(puml_stem) + 1:]
-            # Check if suffix is exactly 3 digits
-            if suffix.isdigit() and len(suffix) == 3:
-                return True
-
-    return False
+    return puml_stem in image_stems or puml_stem in multipage_bases
 
 
 def validate_puml_files(puml_dir: Path, images_dir: Path, output_dir: Path) -> Tuple[int, int]:
@@ -102,10 +108,11 @@ def validate_puml_files(puml_dir: Path, images_dir: Path, output_dir: Path) -> T
     valid_dir.mkdir(parents=True, exist_ok=True)
     invalid_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get all image stems
+    # Get all image stems and precompute multi-page bases
     print("Loading image filenames...", file=sys.stderr)
     image_stems = get_image_stems(images_dir)
-    print(f"Found {len(image_stems)} image files", file=sys.stderr)
+    multipage_bases = build_multipage_bases(image_stems)
+    print(f"Found {len(image_stems)} image files ({len(multipage_bases)} multi-page bases)", file=sys.stderr)
 
     # Get all .puml files
     puml_files = list(puml_dir.glob("*.puml"))
@@ -121,7 +128,7 @@ def validate_puml_files(puml_dir: Path, images_dir: Path, output_dir: Path) -> T
         puml_stem = puml_file.stem
 
         # Check if corresponding image(s) exist
-        has_image = check_puml_has_image(puml_stem, image_stems)
+        has_image = check_puml_has_image(puml_stem, image_stems, multipage_bases)
 
         # Copy to appropriate directory
         if has_image:
