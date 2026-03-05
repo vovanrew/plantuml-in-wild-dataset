@@ -8,11 +8,11 @@ Each diagram in the dataset is classified by an LLM into a semantic diagram type
 
 The LLM examines the raw `.puml` source and assigns a semantic diagram type based on content, keywords, and intent.
 
-**Types produced:** class, sequence, activity, state, component, usecase, deployment, object, timing, unclassified
+**Types produced:** class, sequence, activity, state, component, usecase, deployment, object, timing, non-uml
 
-### The `unclassified` category
+### The `non-uml` category
 
-12,616 diagrams were classified as `unclassified`. These are predominantly **sprite/icon library definitions** — files that define reusable graphical sprites using PlantUML's `sprite` directive and `!define` macros. Example:
+12,616 diagrams were classified as `non-uml`. These include PlantUML-specific formats (@startmindmap, @startgantt, @startwbs, @startjson, etc.), ERD/database schemas, empty diagrams, and predominantly **sprite/icon library definitions** — files that define reusable graphical sprites using PlantUML's `sprite` directive and `!define` macros. Example:
 
 ```plantuml
 @startuml
@@ -38,7 +38,7 @@ To validate the LLM classification, we ran each diagram through PlantUML's compi
 | activity | activity | 1:1 mapping |
 | state | state | 1:1 mapping |
 
-Types with no parser equivalent (unclassified, timing) were excluded from validation.
+Types with no parser equivalent (non-uml, timing) were excluded from validation.
 
 ### Validation results
 
@@ -75,7 +75,7 @@ A single diagram can freely mix all three element types, so the diagram-level di
 
 ## Open Questions
 
-1. **Sprite/icon libraries (unclassified)**: Should the 12,616 sprite files be excluded from the dataset entirely, or kept as a separate "library/sprite" category? They are not UML diagrams but are part of the PlantUML ecosystem.
+1. **Sprite/icon libraries (non-uml)**: Should the 12,616 sprite files be excluded from the dataset entirely, or kept as a separate "library/sprite" category? They are not UML diagrams but are part of the PlantUML ecosystem.
 
 2. **Component category validation**: The 87.4% agreement on the component category is the weakest. The 1,908 cases where the LLM says "component" but the parser routes to the class factory likely involve diagrams using generic syntax (rectangles, packages) that is structurally valid in both contexts.
 

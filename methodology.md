@@ -132,19 +132,29 @@ We developed an LLM-based classifier using Claude Haiku 4.5 to categorize PlantU
 #### 6.2.1 Supported Diagram Types
 
 The classifier identifies 10 diagram categories:
-- **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object
-- **Unclassified**: Diagrams without recognizable UML patterns (library files, sprites, minimal content)
+- **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object, timing
+- **Non-UML** (`non-uml`): Anything that is not a standard UML diagram — PlantUML-specific formats (@startmindmap, @startgantt, @startwbs, @startjson, etc.), ERD/database schemas, sprite/icon library definitions, empty diagrams, or files not recognizable as a diagram type
 
 #### 6.2.2 Preprocessing Pipeline
 
-Before classification, each diagram undergoes preprocessing to remove non-semantic content that could cause false positives:
+Before classification, each diagram undergoes lightweight preprocessing that preserves high-value classification signals while removing token-wasting noise:
 
-1. **Comment Stripping**: Single-line (`'`), multi-line (`/' ... '/`), and inline comments
-2. **Styling Block Removal**: `skinparam`, `hide/show` directives, `style` blocks
-3. **Sprite Definition Removal**: Hex/raster sprites and SVG inline sprites
-4. **Preprocessor Directive Removal**: `!define`, `!include`, `!procedure`, `!function` blocks
-5. **Note Block Removal**: Single-line, multi-line, and floating notes
-6. **Documentation Block Removal**: `header`, `footer`, `title`, `legend`, `caption` blocks
+**Preserved** (high classification value for LLM):
+- Human comments (domain context clues)
+- `skinparam`/`hide`/`show`/`style` blocks (contain type-naming keywords)
+- `!include` lines (stdlib library references are strong type signals)
+- `!define` lines (macro mappings reveal actual diagram element types)
+- Salt blocks (`@startsalt...@endsalt` for wireframe detection)
+- Title lines (often explicitly name the diagram type)
+
+**Removed** (no classification value):
+1. **Metadata Headers**: Pipeline-generated comment headers (`Blob ID`, `Original Path`, `Source`)
+2. **Sprite Definitions**: Hex/raster sprites and SVG inline sprites (binary noise)
+3. **Preprocessor Bodies**: `!procedure`/`!function` blocks, `!$variable` assignments
+4. **Hyperlink Syntax**: `[[url]]` double-bracket links
+5. **Note Collapsing**: Multi-line notes collapsed to `[note]` markers; long single-line notes truncated
+6. **Documentation Blocks**: `header`, `footer`, `legend`, `caption` blocks (but NOT `title`)
+7. **Excessive Blank Lines**: Collapsed to single blank lines
 
 #### 6.2.3 Classification Process
 
@@ -155,12 +165,11 @@ For each diagram, the classifier:
 1. Preprocesses content using the pipeline above
 2. Truncates files exceeding 5,000 words to 4,000 words (preserves beginning)
 3. Submits to Claude with a structured prompt requesting JSON output
-4. Extracts diagram types with confidence scores (0.0-1.0)
+4. Extracts diagram type from structured JSON response
 
 **Output Format**:
-- `primary_type`: Highest-confidence diagram type
-- `types`: Dictionary of all detected types with confidence scores
-- `confidence`: Primary type confidence value
+- `primary_type`: Main diagram type
+- `secondary_types`: Array of additional types (empty for most diagrams; populated only when a diagram genuinely combines multiple UML types)
 - `reasoning`: Brief explanation of classification decision
 
 #### 6.2.4 Classification Criteria
@@ -187,7 +196,7 @@ The prompt instructs the model to identify diagrams based on characteristic feat
 |------|-------|------------|
 | class | 73,865 | 45.5% |
 | sequence | 35,229 | 21.7% |
-| unclassified | 12,616 | 7.8% |
+| non-uml | 12,616 | 7.8% |
 | activity | 9,836 | 6.1% |
 | component | 8,215 | 5.1% |
 | usecase | 7,460 | 4.6% |
@@ -207,11 +216,10 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Blob ID**: SHA-1 hash serving as unique identifier
 - **Original file path**: Path in source repository
 - **Source repository**: GitHub URL (via WoC b2P mapping)
-- **Diagram type**: LLM classification result with confidence score
+- **Diagram type**: LLM classification result (primary_type, secondary_types, reasoning)
 - **Line metrics**: `content_lines` and `comment_lines` counts
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
 - **Connection counts**: Per-category connection counts (e.g., `{"structural": 12}`)
-- **Consistency score**: Validation score (0.0-1.0) indicating classification confidence
 - **Validation flags**: Any detected issues from cross-validation
 
 ### 7.2 Reproducibility
