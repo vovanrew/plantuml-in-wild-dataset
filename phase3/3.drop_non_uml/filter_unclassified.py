@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Remove non-diagram content (unclassified/sprite libraries) from the dataset.
+"""Remove non-UML content from the dataset.
 
-Reads the LLM classification JSON, identifies entries with primary_type == "unclassified",
+Reads the LLM classification JSON, identifies entries with primary_type == "non-uml",
 deletes corresponding .puml and .png files, and writes a filtered classification JSON.
 
 Usage:
@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-EXCLUDED_TYPE = "unclassified"
+EXCLUDED_TYPE = "non-uml"
 
 
 def find_related_files(directory: Path, blob_id: str, extension: str) -> list[Path]:
@@ -44,7 +44,7 @@ def find_related_files(directory: Path, blob_id: str, extension: str) -> list[Pa
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Filter unclassified (sprite/icon library) entries from the dataset."
+        description="Filter non-UML entries from the dataset."
     )
     parser.add_argument(
         "--classification", required=True, type=Path,

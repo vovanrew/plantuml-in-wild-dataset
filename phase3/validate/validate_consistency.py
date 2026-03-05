@@ -122,9 +122,9 @@ def calculate_consistency_score(
     Returns:
         Consistency score between 0.0 and 1.0
     """
-    # Handle unclassified diagrams (library files, sprites, etc.)
+    # Handle non-uml diagrams (library files, sprites, empty diagrams, etc.)
     # These have no features detected, so 0 elements is expected and consistent
-    if primary_type == 'unclassified':
+    if primary_type == 'non-uml':
         total_elements = sum(elements.values())
         return 1.0 if total_elements == 0 else 0.3
 
@@ -234,9 +234,9 @@ def detect_flags(
 
     # NO_ELEMENTS check
     # Skip for activity diagrams - they use flow syntax rather than declared elements
-    # Skip for unclassified - these are library/sprite files with no diagram content
+    # Skip for non-uml - these are library/sprite files with no diagram content
     if total_elements == 0:
-        if primary_type not in ('activity', 'unclassified'):
+        if primary_type not in ('activity', 'non-uml'):
             flags.append({
                 'code': 'NO_ELEMENTS',
                 'severity': 'warning',

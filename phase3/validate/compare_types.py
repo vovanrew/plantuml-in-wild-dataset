@@ -26,7 +26,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # Maps LLM primary_type to the compiler's equivalent parsed_type.
-# Types not listed here have no known mapping (e.g. "timing", "unclassified").
+# Types not listed here have no known mapping (e.g. "timing", "non-uml").
 TAXONOMY_MAP = {
     'class': 'class',
     'object': 'class',
@@ -348,7 +348,7 @@ def print_report(report: dict):
     print("  compiler sequence  = LLM {sequence}")
     print("  compiler activity  = LLM {activity}")
     print("  compiler state     = LLM {state}")
-    print("  excluded: unclassified, timing (no compiler equivalent)")
+    print("  excluded: non-uml, timing (no compiler equivalent)")
     print("=" * 70)
     print(f"  Total entries:          {s['total']}")
     print(f"  Comparable (mapped):    {s['comparable']}")

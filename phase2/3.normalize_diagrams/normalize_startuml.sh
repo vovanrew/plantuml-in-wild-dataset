@@ -121,15 +121,27 @@ main() {
             TOTAL_FILES_PROCESSED=$((TOTAL_FILES_PROCESSED + 1))
 
             # Check if file needs modification
-            # Match any @start tag followed by a name in braces, parens, brackets, or after a space
+            local needs_modification=false
+
+            # 1. Strip commented-out @start/@end directives that PlantUML
+            #    treats as real diagram boundaries (produces extra _NNN.png files)
+            if grep -qE "^[[:space:]]*'[[:space:]]*@(start|end)[a-zA-Z]+[[:space:]]*$" "${file}" 2>/dev/null; then
+                sed -i '' -E "/^[[:space:]]*'[[:space:]]*@(start|end)[a-zA-Z]+[[:space:]]*$/d" "${file}"
+                needs_modification=true
+            fi
+
+            # 2. Strip custom names from @start tags that cause PlantUML to use
+            #    them as output filenames, breaking our blob-ID-based naming convention
+            #    Handle: @startuml{name}, @startuml(name), @startuml[name], @startuml name
             if grep -qE '@start[a-zA-Z]+(\{|[(\[]|[[:space:]]+[^[:space:]])' "${file}" 2>/dev/null; then
-                # Strip custom names that cause PlantUML to use them as output filenames,
-                # breaking our blob-ID-based naming convention
-                # Handle: @startuml{name}, @startuml(name), @startuml[name], @startuml name
                 sed -i '' -E 's/(@start[a-zA-Z]+)\{[^}]*\}/\1/g' "${file}"
                 sed -i '' -E 's/(@start[a-zA-Z]+)\([^)]*\)/\1/g' "${file}"
                 sed -i '' -E 's/(@start[a-zA-Z]+)\[[^]]*\]/\1/g' "${file}"
                 sed -i '' -E 's/(@start[a-zA-Z]+)[[:space:]]+[^[:space:]].*/\1/' "${file}"
+                needs_modification=true
+            fi
+
+            if [[ "${needs_modification}" == true ]]; then
                 local_files_modified=$((local_files_modified + 1))
                 TOTAL_FILES_MODIFIED=$((TOTAL_FILES_MODIFIED + 1))
             fi

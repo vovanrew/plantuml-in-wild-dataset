@@ -236,7 +236,7 @@ def categorize_errors(confusion: Dict) -> Dict[str, Any]:
             categories['component_deployment_confusion'].append(item)
         elif {classified, actual} == {'sequence', 'activity'}:
             categories['sequence_activity_confusion'].append(item)
-        elif classified == 'object' and actual == 'unclassified':
+        elif classified == 'object' and actual == 'non-uml':
             categories['object_overassignment'].append(item)
         else:
             categories['other'].append(item)

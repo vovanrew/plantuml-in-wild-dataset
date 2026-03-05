@@ -536,3 +536,241 @@ def preprocess_content(content: str) -> str:
     content = strip_notes(content)
     content = strip_footer_header(content)
     return content
+
+
+# =============================================================================
+# LLM-specific preprocessing helpers
+# =============================================================================
+
+
+def strip_metadata_headers(content: str) -> str:
+    """
+    Remove pipeline-generated metadata comment headers.
+
+    These are the three comment lines added by generate_puml_from_base64.py
+    during Phase 2 file preparation. They contain no classification signal.
+
+    Removes lines matching:
+    - ' Blob ID: ...
+    - ' Original Path: ...
+    - ' Source: ...
+
+    Args:
+        content: Raw PlantUML content
+
+    Returns:
+        Content with metadata headers removed
+    """
+    return re.sub(
+        r"^\s*'\s*(?:Blob ID|Original Path|Source)\s*:.*$",
+        '',
+        content,
+        flags=re.MULTILINE
+    )
+
+
+def strip_preprocessor_for_llm(content: str) -> str:
+    """
+    Remove preprocessor directives that waste tokens, but KEEP !include and !define.
+
+    For LLM classification, these lines are valuable signals:
+    - !include references stdlib libraries (e.g., <C4/C4_Context>, <awslib>)
+      that strongly indicate diagram type
+    - !define contains macro mappings (e.g., !define Table(x) class x) that
+      reveal the actual diagram element types behind macro calls
+
+    Removes: !procedure/!endprocedure, !function/!endfunction,
+             !$variable assignments, !unquoted definitions
+    Keeps:   !include lines, !define lines
+
+    Args:
+        content: PlantUML content
+
+    Returns:
+        Content with non-include preprocessor directives removed
+    """
+    # NOTE: !define lines are intentionally KEPT — they contain macro mappings
+    # like "!define Table(name,desc) class name" that reveal diagram element types
+
+    # Remove !procedure...!endprocedure blocks (including !unquoted procedure)
+    content = re.sub(
+        r'!(?:unquoted\s+)?procedure\b.*?!endprocedure',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Remove !function...!endfunction blocks (including !unquoted function)
+    content = re.sub(
+        r'!(?:unquoted\s+)?function\b.*?!endfunction',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Remove !$variable assignments
+    content = re.sub(
+        r'^\s*!\$\w+\s*=.*$',
+        '',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Remove !unquoted definitions (but not !unquoted procedure/function,
+    # which are already handled above)
+    content = re.sub(
+        r'^\s*!unquoted\s+.*$',
+        '',
+        content,
+        flags=re.MULTILINE
+    )
+
+    return content
+
+
+def collapse_notes(content: str, max_note_length: int = 80) -> str:
+    """
+    Collapse note content for LLM classification to save tokens.
+
+    Multi-line notes are replaced with a [note] marker since the body text
+    rarely contains classification-relevant keywords. Single-line notes
+    with long text are truncated. The note keyword and position are preserved.
+
+    Args:
+        content: PlantUML content
+        max_note_length: Maximum length for single-line note text before truncation
+
+    Returns:
+        Content with notes collapsed
+    """
+    # Step 1: Collapse multi-line notes to [note] marker
+    content = re.sub(
+        r'\bnote\s+(?:left|right|top|bottom|over)?(?:\s+of\s+\w+)?\s*\n.*?\bend\s+note\b',
+        '[note]',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Step 2: Truncate long single-line notes
+    def _truncate_note(match):
+        prefix = match.group(1)
+        text = match.group(2)
+        if len(text) > max_note_length:
+            return prefix + text[:max_note_length] + '...'
+        return match.group(0)
+
+    content = re.sub(
+        r'(^\s*note\s+(?:left|right|top|bottom|over)(?:\s+of\s+\w+)?\s*:)\s*(.*)$',
+        _truncate_note,
+        content,
+        flags=re.MULTILINE | re.IGNORECASE
+    )
+
+    # Step 3: Collapse floating notes: note "text" as N1
+    content = re.sub(
+        r'^\s*note\s+"[^"]*"(?:\s+as\s+\w+)?.*$',
+        '[note]',
+        content,
+        flags=re.MULTILINE | re.IGNORECASE
+    )
+
+    return content
+
+
+def strip_footer_header_keep_title(content: str) -> str:
+    """
+    Remove footer, header, legend, and caption blocks but KEEP title lines.
+
+    For LLM classification, title lines are high-value signals because they
+    often explicitly name the diagram type (e.g., "title Authentication State
+    Machine", "title Class Diagram").
+
+    Args:
+        content: PlantUML content
+
+    Returns:
+        Content with boilerplate blocks removed but titles preserved
+    """
+    # Remove multi-line header blocks
+    content = re.sub(
+        r'\b(left|right|center)?\s*header\b.*?\bendheader\b',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Remove multi-line footer blocks
+    content = re.sub(
+        r'\b(left|right|center)?\s*footer\b.*?\bendfooter\b',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Remove single-line header/footer
+    content = re.sub(
+        r'^\s*(left|right|center)?\s*(header|footer)\s+.*$',
+        '',
+        content,
+        flags=re.MULTILINE | re.IGNORECASE
+    )
+
+    # NOTE: title lines are intentionally NOT removed
+
+    # Remove legend blocks
+    content = re.sub(
+        r'\blegend\b.*?\bendlegend\b',
+        '',
+        content,
+        flags=re.DOTALL | re.IGNORECASE
+    )
+
+    # Remove caption lines
+    content = re.sub(
+        r'^\s*caption\s+.*$',
+        '',
+        content,
+        flags=re.MULTILINE | re.IGNORECASE
+    )
+
+    return content
+
+
+def preprocess_for_llm(content: str) -> str:
+    """
+    Lightweight preprocessing pipeline for LLM-based classification.
+
+    Unlike preprocess_content() which strips all non-structural content
+    for regex-based parsers, this function preserves high-value classification
+    signals while removing only token-wasting noise.
+
+    Preserved (high classification value for LLM):
+    - Human comments (domain context clues)
+    - skinparam/hide/show/style blocks (contain type-naming keywords)
+    - !include lines (stdlib library references = strong type signals)
+    - Salt blocks (@startsalt...@endsalt for wireframe classification)
+    - Title lines (often explicitly name the diagram type)
+
+    Removed (token waste, no classification value):
+    - Metadata comment headers (Blob ID, Original Path, Source)
+    - Sprite hex/SVG data (binary noise)
+    - !procedure/!function bodies, !define macros, !$var assignments
+    - [[url]] hyperlink syntax
+    - Multi-line note bodies (collapsed to [note] marker)
+    - Footer/header/legend/caption blocks (but NOT title)
+    - Excessive blank lines (collapsed to single blank line)
+
+    Args:
+        content: Raw PlantUML content
+
+    Returns:
+        Lightly cleaned content ready for LLM classification
+    """
+    content = strip_metadata_headers(content)
+    content = strip_sprite_blocks(content)
+    content = strip_preprocessor_for_llm(content)
+    content = strip_link_syntax(content)
+    content = collapse_notes(content)
+    content = strip_footer_header_keep_title(content)
+    content = re.sub(r'\n{3,}', '\n\n', content)
+    return content

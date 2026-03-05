@@ -31,46 +31,50 @@ POLL_INTERVAL_SECONDS = 60
 
 UML_TYPES = [
     "sequence", "class", "activity", "state", "usecase",
-    "component", "deployment", "object", "timing", "unclassified"
+    "component", "deployment", "object", "timing",
+    "non-uml"
 ]
 
 # Classification prompt template
-# Note: Double braces {{ }} are escaped for Python .format() - they render as single braces
-CLASSIFICATION_PROMPT = """Classify this PlantUML diagram into UML diagram types.
+# Note: __CONTENT__ placeholder is replaced via str.replace() to avoid issues
+# with PlantUML brace syntax ({static}, {abstract}, JSON content, etc.)
+CLASSIFICATION_PROMPT = """Classify this PlantUML diagram by its semantic meaning, not just syntax.
 
-TYPES (with confidence 0.0-1.0):
-- sequence: interactions over time (participant, ->, activate, alt, loop)
-- class: classes/interfaces with relationships (class, interface, extends)
-- activity: workflow/process flow (start, stop, :action;, if/then/else)
-- state: state machine ([*], state, -->)
-- usecase: actors and use cases ((usecase), :actor:)
-- component: system components ([component], interface, package)
-- deployment: physical deployment (node, artifact, device, cloud)
-- object: object instances (object, map, field = value)
-- timing: timing constraints (@time, robust, concise)
-- unclassified: not recognizable UML
+UML TYPES:
+- sequence: interactions between participants over time (participant, ->, activate, alt, loop, group)
+- class: type definitions with attributes and/or methods, and their relationships. Keywords: class, interface, enum, struct, abstract, entity, extends, implements. Includes diagrams with only attributes (no methods), domain models, and data structure definitions.
+- activity: workflow/process flow (start, stop, :action;, if/then/else, fork, partition)
+- state: state machine transitions ([*], state, -->)
+- usecase: actors interacting with use cases ((usecase), :actor:, actor keyword)
+- component: system components and their interfaces ([component], interface, package, rectangle)
+- deployment: physical infrastructure (node, artifact, device, cloud, database as infrastructure)
+- object: concrete object instances showing runtime values (object keyword, e.g., object "o1:Order" with specific field values)
+- timing: timing constraints and signals (@time, robust, concise)
+
+NON-UML TYPES:
+- non-uml: anything that is NOT a standard UML diagram. Includes:
+  - PlantUML-specific formats: @startmindmap, @startgantt, @startwbs, @startjson, @startyaml, @startsalt, @startditaa, @startnwdiag, @startdot
+  - ERD / database schemas: diagrams that specifically use crow's foot notation (||--o{, }o--|{, ||--|{) AND database column types (INT, VARCHAR, TEXT, BOOL, PK, FK). Both indicators must be present to classify as ERD.
+  - Other non-UML notations drawn using PlantUML syntax
+  - Empty diagrams, macro/sprite-only files, or anything not recognizable as a diagram type
 
 OUTPUT FORMAT (JSON only, no other text):
-{{
-  "types": {{"<type>": <confidence>, ...}},
-  "primary_type": "<highest_confidence_type>",
+{
+  "primary_type": "<type>",
+  "secondary_types": [],
   "reasoning": "<1-sentence explanation>"
-}}
-
-EXAMPLE OUTPUT (JSON only, no other text):
-{{
-  "types": {{"class": 0.8, "sequence": 0.5}},
-  "primary_type": "class",
-  "reasoning": "This diagram primarily defines classes and their relationships."
-}}
+}
 
 RULES:
-1. Include types with confidence >= 0.5
-2. If no UML patterns, return primary_type: "unclassified"
+1. Most diagrams have exactly ONE type. Return it as primary_type with empty secondary_types.
+2. Only add secondary_types when the diagram genuinely combines multiple UML diagram types in a single file (e.g., a sequence diagram that also defines class relationships). This is rare.
+3. If the diagram uses @startmindmap, @startgantt, @startwbs, @startjson, @startyaml, @startsalt, @startditaa, @startnwdiag, or @startdot, return primary_type: "non-uml".
+4. ERD detection: only classify as non-uml ERD when the diagram has BOTH crow's foot notation (||--o{, }o--|{) AND database-specific column types (INT, VARCHAR, TEXT, PK, FK). Using "entity" or "class" keyword alone does not make it an ERD — diagrams with attributes, compositions (*--), or inheritance are class diagrams.
+5. If no recognizable patterns at all, return primary_type: "non-uml".
 
 PlantUML DIAGRAM:
 ```
-{content}
+__CONTENT__
 ```"""
 
 # Try to import required packages
@@ -88,7 +92,7 @@ except ImportError:
 
 # Import shared preprocessing utilities
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from common.preprocessing import preprocess_content
+from common.preprocessing import preprocess_for_llm
 
 
 def check_dependencies():
@@ -201,8 +205,8 @@ def create_batch_requests(files: Dict[str, Dict[str, Any]]) -> tuple[List[Dict[s
         if info['content'] is None:
             continue
 
-        # Preprocess content
-        preprocessed = preprocess_content(info['content'])
+        # Preprocess content (lightweight: keeps comments, styling, includes, salt, title)
+        preprocessed = preprocess_for_llm(info['content'])
 
         # Truncate if content exceeds word limit
         if info.get('needs_truncation'):
@@ -210,7 +214,7 @@ def create_batch_requests(files: Dict[str, Dict[str, Any]]) -> tuple[List[Dict[s
             truncated_files.add(filename)
 
         # Create prompt with preprocessed content
-        prompt = CLASSIFICATION_PROMPT.format(content=preprocessed)
+        prompt = CLASSIFICATION_PROMPT.replace('__CONTENT__', preprocessed)
 
         # Sanitize custom_id for API requirements
         custom_id = sanitize_custom_id(filename)
@@ -391,7 +395,7 @@ def extract_json_from_response(text: str) -> Optional[Dict]:
             pass
 
     # Try to find JSON object pattern
-    json_match = re.search(r'\{[^{}]*"types"[^{}]*\}', text, re.DOTALL)
+    json_match = re.search(r'\{[^{}]*"primary_type"[^{}]*\}', text, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(0))
@@ -437,38 +441,39 @@ def retrieve_results(client: Anthropic, state: Dict, id_to_filename: Dict[str, s
                         parsed = extract_json_from_response(text)
 
                         if parsed:
+                            primary = parsed.get('primary_type', 'non-uml')
+                            if primary == 'non-uml':
+                                diagram_type = 'non-uml'
+                            else:
+                                diagram_type = 'uml'
                             results[filename] = {
-                                'diagram_type': 'uml',
-                                'primary_type': parsed.get('primary_type', 'unclassified'),
-                                'types': parsed.get('types', {}),
-                                'confidence': max(parsed.get('types', {}).values()) if parsed.get('types') else 0.0,
+                                'diagram_type': diagram_type,
+                                'primary_type': primary,
+                                'secondary_types': parsed.get('secondary_types', []),
                                 'reasoning': parsed.get('reasoning', '')
                             }
                         else:
                             # Parse error
                             results[filename] = {
-                                'diagram_type': 'uml',
-                                'primary_type': 'unclassified',
-                                'types': {},
-                                'confidence': None,
+                                'diagram_type': 'non-uml',
+                                'primary_type': 'non-uml',
+                                'secondary_types': [],
                                 'parse_error': True,
                                 'raw_response': text[:500]  # Truncate for debugging
                             }
                     else:
                         results[filename] = {
-                            'diagram_type': 'uml',
-                            'primary_type': 'unclassified',
-                            'types': {},
-                            'confidence': None,
+                            'diagram_type': 'non-uml',
+                            'primary_type': 'non-uml',
+                            'secondary_types': [],
                             'error': 'empty_response'
                         }
                 else:
                     # API error
                     results[filename] = {
-                        'diagram_type': 'uml',
-                        'primary_type': 'unclassified',
-                        'types': {},
-                        'confidence': None,
+                        'diagram_type': 'non-uml',
+                        'primary_type': 'non-uml',
+                        'secondary_types': [],
                         'error': result.result.type
                     }
 
@@ -515,22 +520,24 @@ def generate_output(
 
     # Calculate statistics
     total_files = len(files)
-    successful = sum(1 for c in classifications.values()
-                    if c.get('diagram_type') == 'uml' and not c.get('error') and not c.get('parse_error'))
+    classified = sum(1 for c in classifications.values()
+                     if not c.get('error') and not c.get('parse_error'))
+    uml_count = sum(1 for c in classifications.values()
+                    if c.get('diagram_type') == 'uml')
+    non_uml_count = sum(1 for c in classifications.values()
+                        if c.get('diagram_type') == 'non-uml')
     truncated_count = sum(1 for c in classifications.values() if c.get('truncated'))
     errored = sum(1 for c in classifications.values() if c.get('error') or c.get('parse_error'))
 
-    # Type distribution
+    # Type distribution (all classified diagrams, including non-uml)
     type_dist = {}
-    confidences = []
+    mixed_count = 0
     for c in classifications.values():
-        if c.get('diagram_type') == 'uml' and c.get('primary_type'):
+        if c.get('primary_type') and not c.get('error') and not c.get('parse_error'):
             ptype = c['primary_type']
             type_dist[ptype] = type_dist.get(ptype, 0) + 1
-            if c.get('confidence') is not None:
-                confidences.append(c['confidence'])
-
-    avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+            if c.get('secondary_types'):
+                mixed_count += 1
 
     # Processing time
     duration = end_time - start_time
@@ -542,17 +549,18 @@ def generate_output(
             'model': MODEL_ID,
             'batch_ids': [b['batch_id'] for b in state['batches']],
             'total_files': total_files,
-            'word_limit': MAX_WORD_COUNT,
             'truncate_word_count': TRUNCATE_WORD_COUNT,
             'script_version': VERSION
         },
         'statistics': {
             'total_files': total_files,
-            'successful': successful,
+            'classified': classified,
+            'uml': uml_count,
+            'non_uml': non_uml_count,
             'truncated': truncated_count,
             'errored': errored,
+            'mixed_type': mixed_count,
             'type_distribution': type_dist,
-            'average_confidence': round(avg_confidence, 4),
             'processing_time': processing_time
         },
         'classifications': classifications
@@ -702,14 +710,16 @@ Environment Variables:
     print("Classification Summary", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
     print(f"Total files: {stats['total_files']:,}", file=sys.stderr)
-    print(f"Successful: {stats['successful']:,}", file=sys.stderr)
+    print(f"Classified: {stats['classified']:,}", file=sys.stderr)
+    print(f"  UML: {stats['uml']:,}", file=sys.stderr)
+    print(f"  Non-UML: {stats['non_uml']:,}", file=sys.stderr)
     print(f"Truncated: {stats['truncated']:,}", file=sys.stderr)
     print(f"Errored: {stats['errored']:,}", file=sys.stderr)
     print(f"\nType Distribution:", file=sys.stderr)
     for utype, count in sorted(stats['type_distribution'].items(), key=lambda x: x[1], reverse=True):
         percentage = (count / stats['total_files']) * 100 if stats['total_files'] > 0 else 0
         print(f"  {utype}: {count:,} ({percentage:.2f}%)", file=sys.stderr)
-    print(f"\nAverage confidence: {stats['average_confidence']:.4f}", file=sys.stderr)
+    print(f"\nMixed-type diagrams: {stats['mixed_type']:,}", file=sys.stderr)
     print(f"Processing time: {stats['processing_time']}", file=sys.stderr)
     print(f"Batch IDs: {', '.join(output['metadata']['batch_ids'])}", file=sys.stderr)
     print("=" * 60, file=sys.stderr)

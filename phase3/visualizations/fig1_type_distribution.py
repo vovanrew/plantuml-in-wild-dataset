@@ -34,16 +34,16 @@ def transform_data(type_dist):
     """
     Apply transformations:
     1. Merge artifact into deployment
-    2. Rename unclassified to Non-UML
+    2. Rename non-uml to Non-UML
     3. Capitalize type names
     """
     # Merge artifact into deployment
     if 'artifact' in type_dist:
         type_dist['deployment'] = type_dist.get('deployment', 0) + type_dist.pop('artifact')
 
-    # Rename unclassified to Non-UML
-    if 'unclassified' in type_dist:
-        type_dist['Non-UML'] = type_dist.pop('unclassified')
+    # Rename non-uml to Non-UML
+    if 'non-uml' in type_dist:
+        type_dist['Non-UML'] = type_dist.pop('non-uml')
 
     # Capitalize type names (except Non-UML which is already formatted)
     transformed = {}
