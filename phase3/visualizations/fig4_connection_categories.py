@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Figure 4: Connection Category Distribution
+Figure 4: Connection Type Distribution
 
-Creates an MDPI-compliant bar chart showing the distribution of
-connection categories in PlantUML diagrams.
+Creates an MDPI-compliant horizontal bar chart showing the top 15
+connection types used in PlantUML diagrams.
 """
 
 import json
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
@@ -15,30 +16,31 @@ from pathlib import Path
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
-FIGURE_HEIGHT_INCHES = FIGURE_WIDTH_INCHES * 0.5  # Shorter for 4 bars
+FIGURE_HEIGHT_INCHES = FIGURE_WIDTH_INCHES * 0.7  # Taller for horizontal bars
 FONT_FAMILY = 'Arial'
 MIN_FONT_SIZE = 8
 BAR_COLOR = '#4A90A4'
 
+# Configuration
+TOP_N = 15  # Show top 15 connection types
+
 # Paths
-DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json')
 OUTPUT_PATH = Path(__file__).parent / 'fig4_connection_categories.png'
 
 
-def load_data():
-    """Load connection category statistics from JSON."""
-    with open(DATA_PATH, 'r') as f:
+def load_data(data_path):
+    """Load connection type statistics from JSON."""
+    with open(data_path, 'r') as f:
         data = json.load(f)
 
-    conn_stats = data['statistics']['connection_count_statistics']
-    by_category = conn_stats['by_category']
-    total_connections = conn_stats['connections_total']
+    by_type = data['statistics']['connections_type_totals']
+    total_connections = sum(by_type.values())
 
-    return by_category, total_connections
+    return by_type, total_connections
 
 
-def create_chart(by_category, total_connections):
-    """Create MDPI-compliant bar chart."""
+def create_chart(by_type, total_connections):
+    """Create MDPI-compliant horizontal bar chart."""
     # Set up matplotlib with MDPI specs
     plt.rcParams.update({
         'font.family': FONT_FAMILY,
@@ -49,38 +51,47 @@ def create_chart(by_category, total_connections):
         'ytick.labelsize': 9,
     })
 
-    # Sort by count (descending)
-    sorted_categories = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
+    # Sort and get top N
+    sorted_types = sorted(by_type.items(), key=lambda x: x[1], reverse=True)
+    top_types = sorted_types[:TOP_N]
 
-    labels = [c[0].title() for c in sorted_categories]  # Capitalize
-    counts = [c[1] for c in sorted_categories]
+    # Reverse for horizontal bar chart (top item at top)
+    top_types = top_types[::-1]
+
+    labels = [t[0].title() for t in top_types]  # Capitalize
+    counts = [t[1] for t in top_types]
 
     # Create figure
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES))
 
-    # Create vertical bars
-    x_pos = range(len(labels))
-    bars = ax.bar(x_pos, counts, color=BAR_COLOR, edgecolor='white', linewidth=0.5)
+    # Create horizontal bars
+    y_pos = range(len(labels))
+    bars = ax.barh(y_pos, counts, color=BAR_COLOR, edgecolor='white', linewidth=0.5)
 
-    # Add labels above bars (count + percentage)
-    for bar, count in zip(bars, counts):
+    # Add labels at end of bars (count + percentage)
+    for i, (bar, count) in enumerate(zip(bars, counts)):
         percentage = (count / total_connections) * 100
-        label = f'{count:,}\n({percentage:.1f}%)'
-        ax.annotate(label,
-                    xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                    xytext=(0, 5),
-                    textcoords='offset points',
-                    ha='center', va='bottom',
-                    fontsize=9)
+        label = f'{count:,} ({percentage:.1f}%)'
+
+        # Position label inside or outside bar based on length
+        if count > max(counts) * 0.3:
+            ax.annotate(label,
+                        xy=(count - max(counts) * 0.02, bar.get_y() + bar.get_height() / 2),
+                        ha='right', va='center',
+                        fontsize=8, color='white', fontweight='bold')
+        else:
+            ax.annotate(label,
+                        xy=(count + max(counts) * 0.01, bar.get_y() + bar.get_height() / 2),
+                        ha='left', va='center',
+                        fontsize=8)
 
     # Configure axes
-    ax.set_xlabel('Connection Category', fontsize=10)
-    ax.set_ylabel('Number of Connections', fontsize=10)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels)
+    ax.set_xlabel('Number of Connections', fontsize=10)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels)
 
-    # Format y-axis with thousands separator
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: f'{int(x):,}'))
+    # Format x-axis with thousands separator
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: f'{int(x):,}'))
 
     # Remove top and right spines
     ax.spines['top'].set_visible(False)
@@ -88,9 +99,9 @@ def create_chart(by_category, total_connections):
 
     # Add total annotation
     ax.annotate(f'Total: {total_connections:,} connections',
-                xy=(0.98, 0.95),
+                xy=(0.98, 0.02),
                 xycoords='axes fraction',
-                ha='right', va='top',
+                ha='right', va='bottom',
                 fontsize=9,
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
                          edgecolor='gray', alpha=0.9))
@@ -103,18 +114,23 @@ def create_chart(by_category, total_connections):
 
 def main():
     """Main execution."""
-    print("Loading data...")
-    by_category, total_connections = load_data()
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <uml_metadata.json>", file=sys.stderr)
+        sys.exit(1)
+    data_path = sys.argv[1]
 
-    print(f"Connection categories: {len(by_category)}")
+    print("Loading data...")
+    by_type, total_connections = load_data(data_path)
+
+    print(f"Connection types: {len(by_type)}")
     print(f"Total connections: {total_connections:,}")
 
-    for cat, count in sorted(by_category.items(), key=lambda x: x[1], reverse=True):
+    for t, count in sorted(by_type.items(), key=lambda x: x[1], reverse=True):
         pct = (count / total_connections) * 100
-        print(f"  {cat}: {count:,} ({pct:.1f}%)")
+        print(f"  {t}: {count:,} ({pct:.1f}%)")
 
     print("\nCreating chart...")
-    fig = create_chart(by_category, total_connections)
+    fig = create_chart(by_type, total_connections)
 
     print(f"Saving to {OUTPUT_PATH} at {DPI} DPI...")
     fig.savefig(OUTPUT_PATH, dpi=DPI, bbox_inches='tight',

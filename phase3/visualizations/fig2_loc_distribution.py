@@ -7,6 +7,7 @@ by lines of code for the Data paper.
 """
 
 import json
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
@@ -21,27 +22,16 @@ MIN_FONT_SIZE = 8
 BAR_COLOR = '#4A90A4'
 
 # Paths
-DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json')
 OUTPUT_PATH = Path(__file__).parent / 'fig2_loc_distribution.png'
 
 
-def load_data():
-    """Load data and compute logarithmic bins from per-file content_lines."""
-    with open(DATA_PATH, 'r') as f:
+def load_data(data_path):
+    """Load pre-computed LOC distribution and median from JSON."""
+    with open(data_path, 'r') as f:
         data = json.load(f)
 
     median = data['statistics']['lines_count_statistics']['median']
-
-    # Compute logarithmic bins from raw per-file data
-    classifications = data.get('classifications', {})
-    all_lines = [c['content_lines'] for c in classifications.values() if 'content_lines' in c]
-
-    distribution = {
-        '1-10': sum(1 for val in all_lines if 1 <= val <= 10),
-        '11-100': sum(1 for val in all_lines if 11 <= val <= 100),
-        '101-1000': sum(1 for val in all_lines if 101 <= val <= 1000),
-        '1001+': sum(1 for val in all_lines if val > 1000)
-    }
+    distribution = data['statistics']['lines_count_distribution']
 
     return distribution, median
 
@@ -112,8 +102,13 @@ def create_histogram(distribution, median):
 
 def main():
     """Main execution."""
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <uml_metadata.json>", file=sys.stderr)
+        sys.exit(1)
+    data_path = sys.argv[1]
+
     print("Loading data...")
-    distribution, median = load_data()
+    distribution, median = load_data(data_path)
 
     print(f"Lines count distribution: {distribution}")
     print(f"Median: {median} lines")

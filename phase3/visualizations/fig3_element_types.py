@@ -7,6 +7,7 @@ element types used in PlantUML diagrams.
 """
 
 import json
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
@@ -24,18 +25,16 @@ BAR_COLOR = '#4A90A4'
 TOP_N = 15  # Show top 15 element types
 
 # Paths
-DATA_PATH = Path('/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json')
 OUTPUT_PATH = Path(__file__).parent / 'fig3_element_types.png'
 
 
-def load_data():
+def load_data(data_path):
     """Load element type statistics from JSON."""
-    with open(DATA_PATH, 'r') as f:
+    with open(data_path, 'r') as f:
         data = json.load(f)
 
-    element_stats = data['statistics']['element_count_statistics']
-    by_type = element_stats['by_element_type']
-    total_elements = element_stats['elements_total']
+    by_type = data['statistics']['elements_type_totals']
+    total_elements = sum(by_type.values())
 
     return by_type, total_elements
 
@@ -115,8 +114,13 @@ def create_chart(by_type, total_elements):
 
 def main():
     """Main execution."""
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <uml_metadata.json>", file=sys.stderr)
+        sys.exit(1)
+    data_path = sys.argv[1]
+
     print("Loading data...")
-    by_type, total_elements = load_data()
+    by_type, total_elements = load_data(data_path)
 
     print(f"Total element types: {len(by_type)}")
     print(f"Total elements: {total_elements:,}")

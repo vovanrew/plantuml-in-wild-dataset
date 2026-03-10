@@ -8,7 +8,7 @@ The primary data structure used was the **lb2fFull basemap**, consisting of 128 
 
 ## 2. Data Extraction Pipeline
 
-Our extraction methodology employed a two-stage approach to identify and retrieve PlantUML diagrams from the WoC dataset:
+Our extraction methodology employed a two-stage approach to identify and retrieve UML diagrams from the WoC dataset. We targeted PlantUML source files as the extraction medium, since PlantUML is a widely adopted textual UML notation with dedicated file extensions that enable reliable identification in large-scale code corpora:
 
 ### 2.1 Stage 1: Extension-Based Identification
 
@@ -57,6 +57,8 @@ Deduplication was inherently performed at the blob level, as WoC's content-addre
 
 ## 4. Preprocessing and Normalization
 
+The following preprocessing steps address PlantUML-specific syntax conventions to ensure consistent file naming and a one-to-one mapping between files and diagrams.
+
 ### 4.1 Multi-Diagram Splitting
 
 Many source files contained multiple diagram blocks within a single file. Out of the 202,106 validated files, **1,842 files (0.9%)** contained multiple PlantUML diagrams. We developed a splitting algorithm using regex patterns to:
@@ -98,9 +100,9 @@ The compilation process provided syntactic validation of diagram correctness:
 | Metric | Count |
 |--------|-------|
 | Total files processed | 209,122 |
-| Successfully compiled | TBD |
-| Compilation errors | TBD |
-| Generated PNG images | TBD |
+| Successfully compiled | 163,946 |
+| Compilation errors | 45,176 |
+| Generated PNG images | 165,177 |
 
 The number of generated images may slightly exceed the number of successfully compiled files due to the PlantUML `newpage` keyword, which generates multiple images from a single source file.
 
@@ -108,9 +110,10 @@ Files with compilation errors were logged separately and could serve as a comple
 
 ## 6. Dataset Analysis Framework
 
-### 6.1 Complexity Metrics
+### 6.1 Textual Size Metrics
 
-We implemented automated analysis to characterize diagram complexity:
+We implemented automated analysis to characterize diagram size using line counts in the PlantUML source notation. These metrics reflect the textual size of the PlantUML specification rather than abstract UML complexity, as the same diagram may require a different number of lines in other representations (e.g., XMI, graphical editors).
+
 - **Line metrics**:
   - `content_lines`: Non-blank, non-comment lines (excluding metadata header, `@startuml/@enduml` markers)
   - `comment_lines`: Pure comment lines
@@ -118,22 +121,24 @@ We implemented automated analysis to characterize diagram complexity:
 
 | Lines | Count | Percentage |
 |-------|-------|------------|
-| 1-10 | TBD | TBD |
-| 11-100 | TBD | TBD |
-| 101-1000 | TBD | TBD |
-| 1001+ | TBD | TBD |
+| 1-10 | 32,870 | 22.9% |
+| 11-100 | 101,098 | 70.5% |
+| 101-1000 | 9,338 | 6.5% |
+| 1001+ | 121 | 0.1% |
 
-**Summary Statistics**: TBD
+**Summary Statistics**: min = 1, max = 31,784, mean = 39.34, median = 22, Q1 = 11, Q3 = 42
 
 ### 6.2 Diagram Type Classification
 
-We developed an LLM-based classifier using Claude Haiku 4.5 to categorize PlantUML diagrams into UML diagram types. The classifier leverages Anthropic's Message Batches API for cost-effective processing of the full dataset (162k+ diagrams).
+We developed an LLM-based classifier using Claude Haiku 4.5 to categorize compiled diagrams into standard UML diagram types and to identify non-UML content for exclusion. The classifier leverages Anthropic's Message Batches API for cost-effective processing of all 163,946 compiled diagrams.
 
 #### 6.2.1 Supported Diagram Types
 
-The classifier identifies 10 diagram categories:
+The classifier assigns each diagram to one of 9 standard UML types or labels it as `non-uml` for exclusion:
 - **UML Diagrams**: sequence, class, activity, state, usecase, component, deployment, object, timing
-- **Non-UML** (`non-uml`): Anything that is not a standard UML diagram — PlantUML-specific formats (@startmindmap, @startgantt, @startwbs, @startjson, etc.), ERD/database schemas, sprite/icon library definitions, empty diagrams, or files not recognizable as a diagram type
+- **Non-UML** (`non-uml`): Content that does not constitute a standard UML diagram. This label identifies files for removal from the final dataset and encompasses PlantUML-specific formats (`@startmindmap`, `@startgantt`, `@startwbs`, `@startjson`, etc.), sprite/icon library definitions, ERD/database schemas, auto-generated non-UML visualizations (e.g., Helm chart dependency maps), and files not recognizable as any diagram type
+
+These 9 types correspond to 9 of the 14 diagram types defined in the UML 2.5 specification. The 5 types absent from the dataset — package, composite structure, interaction overview, communication, and profile diagrams — are not natively supported by PlantUML's diagram syntax and therefore do not appear in the source corpus.
 
 #### 6.2.2 Preprocessing Pipeline
 
@@ -188,25 +193,28 @@ The prompt instructs the model to identify diagrams based on characteristic feat
 | object | `object`, `map`, field assignments |
 | timing | `@time`, `robust`, `concise` |
 
-#### 6.2.5 Classification Stats
+#### 6.2.5 Classification Results and Non-UML Filtering
 
-**Type Distribution**:
+The classifier assigned a type to all 163,946 compiled diagrams. Of these, 20,434 (12.5%) were classified as `non-uml` — predominantly sprite/icon library definitions, PlantUML-specific non-UML formats (`@startmindmap`, `@startgantt`, `@startwbs`, `@startjson`, `@startsalt`, `@startditaa`, `@startnwdiag`, `@startdot`), ERD/database schemas, and auto-generated infrastructure visualizations (e.g., Helm chart dependency maps). Since the dataset targets standard UML diagrams, these entries were excluded.
+
+To validate the classifier's non-UML labeling, we performed a manual review of a random sample of 100 entries drawn from the `non-uml` category. A domain expert examined each source file and confirmed 100% agreement with the classifier's decision, supporting the reliability of the automated filtering.
+
+After removing non-UML content, the dataset contains **143,512 UML diagrams**. Two additional filtering steps further refined the dataset: (1) removal of 84 Graphviz DOT passthrough diagrams — files using raw `digraph`/`graph` DOT syntax within `@startuml` blocks, which PlantUML forwards to Graphviz without building a UML diagram model, identified via the parser-based extraction tool's `unsupported_type:PSystemDot` error; and (2) removal of 1 empty diagram with zero content lines. The final dataset contains **143,427 UML diagrams** distributed across 9 standard UML types:
 
 | Type | Count | Percentage |
 |------|-------|------------|
-| class | 73,865 | 45.5% |
-| sequence | 35,229 | 21.7% |
-| non-uml | 12,616 | 7.8% |
-| activity | 9,836 | 6.1% |
-| component | 8,215 | 5.1% |
-| usecase | 7,460 | 4.6% |
-| deployment | 5,972 | 3.7% |
-| object | 4,419 | 2.7% |
-| state | 4,359 | 2.7% |
-| timing | 286 | 0.2% |
+| class | 73,958 | 51.6% |
+| sequence | 35,233 | 24.6% |
+| activity | 9,794 | 6.8% |
+| component | 8,204 | 5.7% |
+| usecase | 7,172 | 5.0% |
+| state | 4,343 | 3.0% |
+| object | 2,456 | 1.7% |
+| deployment | 2,078 | 1.4% |
+| timing | 189 | 0.1% |
 
 # 6.3 Parser-Based Element and Connection Extraction Methodology
-In @classification_and_counting_methodology.md
+In `classification_methodology.md` and `counting_methodology.md`
 
 ## 7. Metadata and Reproducibility
 
@@ -217,7 +225,7 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Original file path**: Path in source repository
 - **Source repository**: GitHub URL (via WoC b2P mapping)
 - **Diagram type**: LLM classification result (primary_type, secondary_types, reasoning)
-- **Line metrics**: `content_lines` and `comment_lines` counts
+- **Line metrics**: `content_lines` count
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
 - **Connection counts**: Per-category connection counts (e.g., `{"structural": 12}`)
 - **Validation flags**: Any detected issues from cross-validation
@@ -237,11 +245,14 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 - After deduplication: 367,550 unique blobs
 - Content-validated: 202,106 blobs (55.0% validation rate)
 - After multi-diagram splitting: 209,122 files
-- Successfully compiled: TBD diagrams
-- Generated images: TBD PNG files
+- Successfully compiled: 163,946 diagrams
+- After non-UML filtering: 143,512 UML diagrams
+- After DOT passthrough removal: 143,428 UML diagrams
+- After empty diagram removal: 143,427 UML diagrams
 
 **Dataset Composition**:
-- Total diagrams: TBD
+- Total UML diagrams: 143,427
+- Diagram types: 9 standard UML types (class, sequence, activity, component, usecase, state, object, deployment, timing)
 - Format: PNG images + PlantUML source code
 - Metadata: JSON format with blob-level attribution
 

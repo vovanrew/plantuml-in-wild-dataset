@@ -12,83 +12,51 @@ This approach ensures that element and connection counts reflect the same interp
 
 ## 3. Parsing Pipeline
 
-The extraction tool invokes the following PlantUML internal pipeline for each input file:
-
-### 3.1 Preprocessing
-
-The source file is read and processed by `BlockUmlBuilder`, which applies PlantUML's Tim preprocessor. This stage handles `!include` directives, `!define` macros, `!procedure` and `!function` blocks, conditional compilation (`!ifdef`, `!ifndef`), and variable substitution. The preprocessor also identifies individual diagram blocks delimited by `@startuml`/`@enduml` markers, producing one `BlockUml` object per block.
-
-### 3.2 Diagram Type Detection and Factory Selection
-
-When `BlockUml.getDiagram()` is invoked, `PSystemBuilder` examines the `@startuml` directive to determine the diagram type (via `DiagramType.getTypeFromArobaseStart()`). It then iterates through registered `PSystemFactory` implementations — each corresponding to a specific diagram type — until one successfully parses the input. This factory selection mechanism supports over 30 diagram types, including class, sequence, activity, state, component, use case, deployment, object, timing, and others.
-
-### 3.3 Command-Based Parsing
-
-For structural UML diagrams, parsing is performed by `PSystemCommandFactory`, which implements a command pattern. Each diagram type registers a set of `Command` implementations, each responsible for recognizing and interpreting a specific syntactic construct (e.g., class declarations, arrow definitions, note attachments). The factory iterates through the preprocessed source lines, matching each line against the registered commands and executing the first match to update the diagram's internal state. This produces a fully populated diagram object containing all declared entities, their attributes, and all connections between them.
+For each input file, the tool invokes PlantUML's full parsing pipeline: preprocessing (macro expansion, `!include` resolution, conditional compilation), diagram type detection, and type-specific command interpretation. This produces a fully resolved diagram object — the same intermediate representation that PlantUML uses to render visual output. The tool then inspects this object to extract element and connection counts.
 
 ## 4. Extraction Strategies
 
-PlantUML employs different internal representations for different diagram families. The extraction tool implements three strategies, dispatched based on the runtime type of the parsed diagram object. All three strategies extract two disjoint metrics: **elements** (the nodes of the diagram's underlying graph — e.g., classes, participants, activity actions) and **connections** (the edges between those nodes — e.g., inheritance links, messages, control flow arrows). A given diagram construct is counted as either an element or a connection, never both.
+The tool extracts two disjoint metrics from each parsed diagram: **elements** (the nodes of the diagram's underlying graph) and **connections** (the edges between those nodes). A given diagram construct is counted as either an element or a connection, never both. Three extraction strategies are used, dispatched based on the diagram's internal representation:
 
-### 4.1 Strategy 1: Entity-Link Diagrams (CucaDiagram)
+| Diagram family | Diagram types | Elements extracted | Connections extracted |
+|---|---|---|---|
+| Entity-link | class, object, component, deployment, use case, state | UML entity types (e.g., class, interface, enum, abstract class, component, state, use case, package) | UML relationship types (e.g., inheritance, composition, aggregation, dependency) |
+| Sequence | sequence | Participant types (e.g., participant, actor, boundary, control, entity, database, queue) | Messages: inter-participant messages, external messages |
+| Activity | activity | Control flow nodes (e.g., action, decision, loop, fork, switch, start, stop) | Control flow edges (e.g., sequential, branch, merge, loop entry/back/exit, fork split/join) |
 
-**Applicable diagram types**: class, object, component, deployment, use case, state
+### 4.1 Entity-Link Diagrams
 
-These diagram types inherit from the `CucaDiagram` base class, which maintains two primary collections:
+Six diagram types (class, object, component, deployment, use case, state) share a common internal representation where elements and connections are stored in separate collections. The parser assigns each element a typed label identifying its UML type (e.g., class, interface, enum, component, state) and each connection a relationship type derived from its endpoint decorations (e.g., inheritance, composition, aggregation, dependency). The tool reads both collections and accumulates per-type counts.
 
-- **Entities**: stored in a hierarchical namespace (`Plasma<Entity>`) and accessible via `leafs()` (terminal entities) and `groups()` (container entities such as packages and namespaces). Each entity carries a `LeafType` enum value assigned during parsing that identifies its UML type (e.g., `CLASS`, `INTERFACE`, `ABSTRACT_CLASS`, `ENUM`, `ANNOTATION`, `COMPONENT`, `STATE`, `USECASE`). The `LeafType` enumeration defines 51 distinct entity types. Container entities carry a `GroupType` enum value (e.g., `PACKAGE`, `STATE`, `CONCURRENT_STATE`).
+### 4.2 Sequence Diagrams
 
-- **Links**: stored as a flat list accessible via `getLinks()`. Each `Link` object references its two endpoint entities and carries a `LinkType` that encodes the visual representation of the relationship. `LinkType` consists of two `LinkDecor` enum values (one per endpoint) and a `LinkStyle`. The `LinkDecor` enumeration distinguishes inheritance (`EXTENDS`), composition (`COMPOSITION`), aggregation (`AGREGATION`), dependency arrows (`ARROW`), and other UML relationship types.
+Sequence diagrams represent participants and events. The tool counts participants by their type (participant, actor, boundary, control, entity, database, collections, queue) as elements, and counts messages between participants as connections. Messages directed to or from outside the diagram are classified separately as external messages.
 
-**Element extraction**: The tool iterates over `leafs()` and `groups()`, reads each entity's `LeafType` or `GroupType`, and accumulates counts per type. The implicit root group is excluded. Element type names are derived directly from the enum constant names (e.g., `LeafType.INTERFACE` produces the key `"interface"`).
+### 4.3 Activity Diagrams
 
-**Connection extraction**: The tool iterates over `getLinks()`, reads each link's `LinkDecor` values at both endpoints, and classifies the connection into a semantic category (e.g., `"extends"`, `"composition"`, `"aggregation"`, `"arrow"`, `"none"`). The classification prioritizes the semantically stronger decoration when both endpoints carry non-trivial decorations.
+Activity diagrams use a tree-structured intermediate representation where each node represents a control flow construct. The tool performs two traversals of this tree: one counting nodes as elements, and another counting the implicit control flow edges between nodes as connections.
 
-### 4.2 Strategy 2: Sequence Diagrams (SequenceDiagram)
+The element labels used by the tool are derived from PlantUML's internal instruction types rather than standard UML terminology. The following table shows the correspondence:
 
-**Applicable diagram types**: sequence
+| Tool label | UML 2.5 equivalent |
+|---|---|
+| simple | Action node |
+| start | Initial node |
+| stop, end | Activity final node, flow final node |
+| decision | Decision / merge node |
+| loop | Loop node (structured, maps to decision + merge) |
+| fork | Fork / join node |
+| switch | Decision node (multi-way) |
 
-Sequence diagrams use a fundamentally different internal representation based on participants and events rather than entities and links.
+Note that activity diagram elements are behavioral (control flow nodes) rather than structural (UML classifiers), consistent with the UML metamodel.
 
-- **Participants**: accessible via `participants()`, returning an ordered collection. Each `Participant` carries a `ParticipantType` enum value distinguishing `PARTICIPANT`, `ACTOR`, `BOUNDARY`, `CONTROL`, `ENTITY`, `DATABASE`, `COLLECTIONS`, and `QUEUE`.
+### 4.4 Implementation Details
 
-- **Events**: accessible via `events()`, returning an ordered list. Events include messages (`Message`), external messages (`MessageExo`), and non-connection events (notes, delays, dividers, groupings). Each `Message` object references its source and target `Participant` objects.
-
-**Element extraction**: The tool iterates over `participants()` and accumulates counts by `ParticipantType`.
-
-**Connection extraction**: The tool iterates over `events()`, filtering for `Message` and `MessageExo` instances, and counts each as a connection. Messages between two participants are classified as `"message"`; messages originating from or directed to an external actor are classified as `"message_exo"`.
-
-### 4.3 Strategy 3: Activity Diagrams (ActivityDiagram3)
-
-**Applicable diagram types**: activity (beta syntax)
-
-Modern activity diagrams use a tree-structured intermediate representation composed of `Instruction` nodes. The tool extracts both elements and connections from this single tree: each `Instruction` node is counted as one **element** (a vertex in the control flow graph), while the implicit control flow relationships between nodes are counted as **connections** (edges in the control flow graph). Unlike entity-link diagrams, where elements and connections are stored in separate collections, here both are derived from the same tree — but they remain disjoint, as nodes and edges are different graph primitives.
-
-The parser constructs a composite tree where compound instructions contain child instructions:
-
-- `InstructionList` represents sequential composition of its N children.
-- `InstructionIf` represents conditional branching with a list of `Branch` objects (one per `then`/`else if` path) and an optional `else` branch.
-- `InstructionWhile` represents pre-test iteration containing a loop body.
-- `InstructionRepeat` represents post-test iteration (repeat-until) containing a loop body.
-- `InstructionFork` represents concurrent execution with N parallel branches.
-- `InstructionSwitch` represents multi-way branching (switch/case) with one branch per case.
-- Leaf instructions (`InstructionSimple`, `InstructionStart`, `InstructionStop`, `InstructionEnd`) represent individual activity nodes with no children.
-
-**Element extraction**: The tool traverses the instruction tree and counts each node as one element, labeled by its instruction type. Compound instructions are labeled by their control flow role (`"decision"` for `InstructionIf`, `"loop"` for `InstructionWhile`/`InstructionRepeat`, `"fork"` for `InstructionFork`, `"switch"` for `InstructionSwitch`). Leaf instructions derive their label from their class name (e.g., `InstructionSimple` produces `"simple"`, `InstructionStart` produces `"start"`).
-
-**Connection extraction**: The tool performs a separate depth-first traversal of the same tree, this time counting the control flow edges implied by each node's semantics rather than the nodes themselves:
-
-- `InstructionList` with N children: N-1 `"sequential"` edges between consecutive children.
-- `InstructionIf`: one `"branch"` edge per conditional path from the decision point, plus one `"merge"` edge where paths reconverge.
-- `InstructionWhile`: three edges — `"loop_entry"` into the body, `"loop_back"` from body to condition, and `"loop_exit"` when the condition fails.
-- `InstructionRepeat`: the same three edge types as `InstructionWhile`.
-- `InstructionFork` with N branches: N `"fork_split"` edges (fork bar to each branch) and N `"fork_join"` edges (each branch to join bar).
-- `InstructionSwitch`: one `"branch"` edge per case, plus one `"merge"` edge at reconvergence.
-- Leaf instructions: no edges (they are endpoints, not sources of additional control flow).
+Full details of the Java class hierarchy, enum types, and tree traversal rules are documented in the tool's source repository. In summary: entity-link diagrams use PlantUML's `LeafType` and `GroupType` enumerations for elements and `LinkDecor` for connection classification; sequence diagrams use `ParticipantType` for elements and filter the event list for messages; activity diagrams map compound instruction nodes (conditionals, loops, forks) to control flow element labels and derive edge counts from each node's branching semantics.
 
 ## 5. Diagram Type Identification
 
-The extraction tool derives the diagram type name from PlantUML's internal `UmlDiagramType` enumeration, which is assigned during parsing. The enum value is converted to lowercase to produce the output label (e.g., `UmlDiagramType.CLASS` becomes `"class"`, `UmlDiagramType.STATE` becomes `"state"`). One mapping adjustment is applied: `UmlDiagramType.DESCRIPTION` — PlantUML's internal designation for component and deployment-style diagrams — is emitted as `"component"` for consistency with standard UML terminology.
+The extraction tool derives the diagram type name from PlantUML's internal `UmlDiagramType` enumeration, which is assigned during parsing. The enum value is converted to lowercase to produce the output label (e.g., `UmlDiagramType.CLASS` becomes `"class"`, `UmlDiagramType.STATE` becomes `"state"`). One mapping adjustment is applied: `UmlDiagramType.DESCRIPTION` — PlantUML's internal designation that encompasses component, deployment, and use case diagrams — is emitted as `"component"`. Because the parser cannot distinguish between these three UML types (see `classification_methodology.md` for details), the parser-derived type serves only as a validation signal, while the LLM classification provides the primary diagram type label used in the dataset.
 
 ## 6. Output Format
 
@@ -120,11 +88,19 @@ Files that fail PlantUML's parser produce an error record with `diagram_type: nu
 
 | Strategy | Diagram Types | Internal Representation |
 |----------|--------------|------------------------|
-| Entity-Link (CucaDiagram) | class, object, component, deployment, use case, state | Entity + Link collections |
-| Sequence (SequenceDiagram) | sequence | Participant + Event lists |
-| Activity (ActivityDiagram3) | activity (beta syntax) | Instruction tree |
+| Entity-Link | class, object, component, deployment, use case, state | Entity + Link collections |
+| Sequence | sequence | Participant + Event lists |
+| Activity | activity | Instruction tree |
 
-Together, these three strategies cover the nine diagram types present in the dataset. Diagram types not matching any strategy (e.g., timing, mind map, Gantt) are reported with an `unsupported_type` error code.
+Together, these three strategies cover the nine diagram types present in the dataset. Diagram types not matching any strategy are reported with an `unsupported_type` error code. The following unsupported types were encountered in the dataset:
+
+| Error code | Count | Explanation |
+|---|---|---|
+| `unsupported_type:TimingDiagram` | 178 | Timing diagrams use a distinct internal representation not covered by the three extraction strategies. Since timing diagrams constitute only 0.1% of the dataset (189 total), dedicated support was not implemented. |
+| `unsupported_type:NewpagedDiagram` | 167 | Multi-page diagrams using the `newpage` keyword produce a `NewpagedDiagram` wrapper that the tool does not unwrap. |
+| `unsupported_type:PSystemMath` | 1 | LaTeX math notation block (`@startmath`/`@startlatex`), not a UML diagram. |
+| `unsupported_type:PSystemVersion` | 1 | PlantUML `@startversion` block displaying version info. |
+Additionally, 84 diagrams with `unsupported_type:PSystemDot` errors (Graphviz DOT passthrough using raw `digraph`/`graph` syntax within `@startuml` blocks) were identified by the extraction tool and subsequently removed from the dataset during filtering (see methodology §6.2.5).
 
 ### 7.2 Accuracy Characteristics
 
@@ -137,9 +113,9 @@ Because the extraction tool operates on PlantUML's own parsed intermediate repre
 
 ### 7.3 Limitations
 
-- **Compilation failures**: Diagrams that fail PlantUML's parser (22% of the dataset) cannot be analyzed by this tool. For these files, the tool emits an error record. A fallback to regex-based counting may be applied to these files at the cost of reduced accuracy.
-- **Activity diagram element semantics**: Activity diagram nodes (actions) are behavioral rather than structural. The tool counts them as instruction-type occurrences (e.g., `"simple"`, `"start"`, `"stop"`) rather than as UML structural elements. This is consistent with the UML metamodel, where actions are not classifiers.
-- **Legacy activity syntax**: The legacy activity diagram syntax (explicit arrows between quoted action names) is parsed by PlantUML into a different internal representation (`ActivityDiagram`, a subclass of `CucaDiagram`). These diagrams are handled by Strategy 1 rather than Strategy 3.
+- **Compilation failures**: Diagrams that fail PlantUML's parser (22% of the pre-filtered dataset) cannot be analyzed by this tool. For these files, the tool emits an error record.
+- **Extraction errors**: Of the 143,427 diagrams in the final dataset, 347 (0.2%) produced extraction errors — predominantly timing diagrams (178) and newpage diagrams (167), with 2 additional edge cases. Element and connection counts are unavailable for these diagrams.
+- **Legacy activity syntax**: PlantUML supports a legacy activity diagram syntax (explicit arrows between quoted action names) that uses a different internal representation. These diagrams are handled by the entity-link strategy rather than the activity strategy.
 
 ## 8. Implementation
 
@@ -152,4 +128,4 @@ The extraction tool is implemented as a single Java class (`DiagramStatsExtracto
 java -cp plantuml-<version>.jar net.sourceforge.plantuml.stats.DiagramStatsExtractor [--dir <directory> | <file.puml> ...]
 ```
 
-**Batch processing**: The tool accepts multiple file paths or a directory argument, processing all files within a single JVM process to avoid per-file startup overhead. Processing 162,257 diagrams completes within a single execution.
+**Batch processing**: The tool accepts multiple file paths or a directory argument, processing all files within a single JVM process to avoid per-file startup overhead. Processing 143,427 diagrams completes within a single execution.

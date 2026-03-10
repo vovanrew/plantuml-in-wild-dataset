@@ -1,4 +1,4 @@
-# Classification Methodology
+# UML Diagram Type Classification and Validation Methodology
 
 ## Overview
 
@@ -12,7 +12,7 @@ The LLM examines the raw `.puml` source and assigns a semantic diagram type base
 
 ### The `non-uml` category
 
-12,616 diagrams were classified as `non-uml`. These include PlantUML-specific formats (@startmindmap, @startgantt, @startwbs, @startjson, etc.), ERD/database schemas, empty diagrams, and predominantly **sprite/icon library definitions** — files that define reusable graphical sprites using PlantUML's `sprite` directive and `!define` macros. Example:
+20,434 diagrams (12.5% of 163,946) were classified as `non-uml`. These include predominantly **sprite/icon library definitions** — files that define reusable graphical sprites using PlantUML's `sprite` directive and `!define` macros — as well as PlantUML-specific non-UML formats (@startmindmap, @startgantt, @startwbs, @startjson, @startsalt, @startditaa, @startnwdiag, @startdot), ERD/database schemas, auto-generated infrastructure visualizations (e.g., Helm chart dependency maps), and empty or unrecognizable files. Example of a sprite library file:
 
 ```plantuml
 @startuml
@@ -28,7 +28,7 @@ These are not diagrams in the traditional UML sense — they are reusable icon a
 
 ## Structural Validation via PlantUML Parser
 
-To validate the LLM classification, we ran each diagram through PlantUML's compiler and extracted the internal diagram type recognized by the parser. The parser produces a coarser 5-type taxonomy due to PlantUML's internal architecture:
+The LLM classification targets the standard UML taxonomy (9 diagram types), assigning each diagram a semantic type based on its content and intent. To validate these assignments, we compared them against PlantUML's own structural parser, which recognizes diagram types based on syntax. The parser produces a coarser 5-type taxonomy due to PlantUML's internal architecture, so validation requires mapping the LLM's finer UML types to the parser's coarser categories:
 
 | Parser type | LLM types it covers | Reason |
 |---|---|---|
@@ -73,10 +73,12 @@ PlantUML's `UmlDiagramType` enum has no separate values for these three types. A
 
 A single diagram can freely mix all three element types, so the diagram-level distinction is inherently undefined. The LLM makes a semantic judgment about the diagram's overall purpose — a classification the parser fundamentally cannot perform.
 
+## Resolved: Non-UML Content Exclusion
+
+All 20,434 diagrams classified as `non-uml` were excluded from the final dataset. Manual validation on a random sample of 100 non-uml entries confirmed 100% agreement with the classifier's labeling, supporting the reliability of the automated filtering. The final dataset contains 143,427 UML diagrams across 9 standard types.
+
 ## Open Questions
 
-1. **Sprite/icon libraries (non-uml)**: Should the 12,616 sprite files be excluded from the dataset entirely, or kept as a separate "library/sprite" category? They are not UML diagrams but are part of the PlantUML ecosystem.
+1. **Component category validation**: The TBD% agreement on the component category is the weakest. The cases where the LLM says "component" but the parser routes to the class factory likely involve diagrams using generic PlantUML constructs (e.g., `rectangle`, `package`, generic arrows) that are syntactically valid in multiple diagram contexts. This reflects PlantUML's permissive syntax rather than genuine UML ambiguity — in standard UML, class and component diagrams are clearly distinct, but PlantUML does not enforce strict syntactic boundaries between diagram types.
 
-2. **Component category validation**: The 87.4% agreement on the component category is the weakest. The 1,908 cases where the LLM says "component" but the parser routes to the class factory likely involve diagrams using generic syntax (rectangles, packages) that is structurally valid in both contexts.
-
-3. **Sequence vs. activity ambiguity (488 cases)**: The largest genuine disagreement between systems sharing the same type vocabulary. Worth investigating whether these are hybrid diagrams or systematic errors.
+2. **Sequence vs. activity ambiguity (488 cases)**: The largest genuine disagreement between systems sharing the same type vocabulary. Worth investigating whether these are hybrid diagrams or systematic errors.

@@ -55,6 +55,7 @@ NON-UML TYPES:
 - non-uml: anything that is NOT a standard UML diagram. Includes:
   - PlantUML-specific formats: @startmindmap, @startgantt, @startwbs, @startjson, @startyaml, @startsalt, @startditaa, @startnwdiag, @startdot
   - ERD / database schemas: diagrams that specifically use crow's foot notation (||--o{, }o--|{, ||--|{) AND database column types (INT, VARCHAR, TEXT, BOOL, PK, FK). Both indicators must be present to classify as ERD.
+  - Graphviz DOT passthrough: diagrams using raw `digraph` or `graph` DOT syntax inside @startuml (PlantUML forwards these to Graphviz without building a UML model)
   - Other non-UML notations drawn using PlantUML syntax
   - Empty diagrams, macro/sprite-only files, or anything not recognizable as a diagram type
 
@@ -70,7 +71,8 @@ RULES:
 2. Only add secondary_types when the diagram genuinely combines multiple UML diagram types in a single file (e.g., a sequence diagram that also defines class relationships). This is rare.
 3. If the diagram uses @startmindmap, @startgantt, @startwbs, @startjson, @startyaml, @startsalt, @startditaa, @startnwdiag, or @startdot, return primary_type: "non-uml".
 4. ERD detection: only classify as non-uml ERD when the diagram has BOTH crow's foot notation (||--o{, }o--|{) AND database-specific column types (INT, VARCHAR, TEXT, PK, FK). Using "entity" or "class" keyword alone does not make it an ERD — diagrams with attributes, compositions (*--), or inheritance are class diagrams.
-5. If no recognizable patterns at all, return primary_type: "non-uml".
+5. If the diagram body starts with `digraph` or `graph {` (raw Graphviz DOT syntax inside @startuml), return primary_type: "non-uml".
+6. If no recognizable patterns at all, return primary_type: "non-uml".
 
 PlantUML DIAGRAM:
 ```
@@ -558,7 +560,7 @@ def generate_output(
             'uml': uml_count,
             'non_uml': non_uml_count,
             'truncated': truncated_count,
-            'errored': errored,
+            'classify_errored': errored,
             'mixed_type': mixed_count,
             'type_distribution': type_dist,
             'processing_time': processing_time
@@ -714,7 +716,7 @@ Environment Variables:
     print(f"  UML: {stats['uml']:,}", file=sys.stderr)
     print(f"  Non-UML: {stats['non_uml']:,}", file=sys.stderr)
     print(f"Truncated: {stats['truncated']:,}", file=sys.stderr)
-    print(f"Errored: {stats['errored']:,}", file=sys.stderr)
+    print(f"Errored: {stats['classify_errored']:,}", file=sys.stderr)
     print(f"\nType Distribution:", file=sys.stderr)
     for utype, count in sorted(stats['type_distribution'].items(), key=lambda x: x[1], reverse=True):
         percentage = (count / stats['total_files']) * 100 if stats['total_files'] > 0 else 0

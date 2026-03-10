@@ -6,12 +6,11 @@ Creates an MDPI-compliant horizontal bar chart showing PlantUML diagram type dis
 """
 
 import json
+import sys
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pathlib import Path
 
-# Data source path
-DATA_PATH = Path("/Users/vovapolischuk/indiehacker/projects/university/plantuml-data/connection_counts.json")
 OUTPUT_PATH = Path(__file__).parent / "fig1_type_distribution.png"
 
 # MDPI specifications
@@ -24,9 +23,9 @@ FIGURE_HEIGHT_INCHES = 4.5
 UML_COLOR = "#4A90A4"
 NON_UML_COLOR = "#808080"
 
-def load_type_distribution():
+def load_type_distribution(data_path):
     """Load only the statistics.type_distribution section from JSON."""
-    with open(DATA_PATH, 'r') as f:
+    with open(data_path, 'r') as f:
         data = json.load(f)
     return data['statistics']['type_distribution']
 
@@ -117,9 +116,14 @@ def create_chart(type_dist):
     return fig, total
 
 def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <uml_metadata.json>", file=sys.stderr)
+        sys.exit(1)
+    data_path = sys.argv[1]
+
     # 1. Load JSON (only statistics section)
     print("Loading type distribution data...")
-    type_dist = load_type_distribution()
+    type_dist = load_type_distribution(data_path)
 
     # 2. Apply transformations
     print("Applying transformations...")
