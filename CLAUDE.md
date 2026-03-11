@@ -1,6 +1,8 @@
-# PlantUML-in-the-Wild Dataset
+# UML-in-the-Wild
 
-Research dataset of PlantUML diagrams extracted from open-source repositories via World of Code (WoC). Licensed CC-BY-4.0.
+**UML-in-the-Wild: A Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories**
+
+Research dataset of 143,427 UML diagrams (9 standard types) extracted from open-source repositories via World of Code (WoC). Licensed CC-BY-4.0. Target publication: **MDPI Data** journal (data descriptor).
 
 ## Project Structure
 
@@ -20,13 +22,16 @@ phase2/                         # Preprocessing and image generation (local)
   3.normalize_diagrams/         # Strip custom @startuml names to preserve blob-ID-based PNG naming
   4.generate_images/            # Compile with PlantUML 1.2025.9, validate puml↔png mapping
 
-phase3/                         # Classification, analysis, validation
-  1.classify_with_llm/          # Claude Haiku 4.5 via Batch API → 10 UML diagram types
-  2.count_stats/                # Line counts (content_lines, comment_lines) + element/connection stats
-  validate/                     # Cross-validation: LLM types vs element composition & parser types
-  manual_validation/            # Stratified sampling + expert review analysis
-  visualizations/               # MDPI-compliant publication figures (fig1–fig4)
-  common/                       # Shared preprocessing utilities (strip comments, styling, sprites, etc.)
+phase3/                              # Classification, analysis, validation
+  1.classify_with_llm/               # Claude Haiku 4.5 via Batch API → 9 UML types + non-uml
+  2.count_lines/                     # Line counts (content_lines, comment_lines) per diagram
+  3.count_connections_and_elements/   # Join DiagramStatsExtractor JSONL into classification JSON
+  4.cleanup/                         # Filter non-UML, DOT passthrough, and empty diagrams
+  5.aggregate_stats/                 # Recompute type/line/element aggregate statistics
+  6.manual_validation/               # Stratified sampling + expert review analysis
+  auto_validation/                   # Cross-validation: LLM types vs parser types
+  visualizations/                    # MDPI-compliant publication figures (fig1–fig4)
+  common/                            # Shared preprocessing utilities (strip comments, styling, sprites, etc.)
 ```
 
 ## Pipeline Flow
@@ -39,16 +44,15 @@ Phase 3 (local) → classification JSON + validation reports + figures
 
 - **File naming**: All files named by blob ID (40-char SHA-1 hex hash), not human-readable names
 - **Metadata headers**: Each .puml file has comment lines: `' Blob ID:`, `' Original Path:`, `' Source: World of Code`
-- **Numbers marked TBD**: methodology.md has TBD placeholders for stats that will be updated after the next full pipeline rerun
 - **No 5-line filter**: The minimum line count filter was removed; all content-validated blobs proceed through the pipeline
 
 ## Methodology Documents
 
 `methodology.md` is the primary document describing the full pipeline for the paper. It references:
-- `classification_methodology.md` (linked from §6.3 as `@classification_and_counting_methodology.md`)
+- `classification_methodology.md` for LLM vs parser classification validation
 - `counting_methodology.md` for the Java-based DiagramStatsExtractor tool
 
-When updating pipeline scripts, keep methodology docs in sync. When updating numbers after a rerun, update all TBD placeholders in methodology.md.
+When updating pipeline scripts, keep methodology docs in sync.
 
 ## Tools and Dependencies
 

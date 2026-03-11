@@ -114,9 +114,7 @@ Files with compilation errors were logged separately and could serve as a comple
 
 We implemented automated analysis to characterize diagram size using line counts in the PlantUML source notation. These metrics reflect the textual size of the PlantUML specification rather than abstract UML complexity, as the same diagram may require a different number of lines in other representations (e.g., XMI, graphical editors).
 
-- **Line metrics**:
-  - `content_lines`: Non-blank, non-comment lines (excluding metadata header, `@startuml/@enduml` markers)
-  - `comment_lines`: Pure comment lines
+- **Line metric**: `content_lines` — non-blank, non-comment lines (excluding metadata header, `@startuml/@enduml` markers)
 - **Distribution** (logarithmic bins for right-skewed data):
 
 | Lines | Count | Percentage |
@@ -227,7 +225,7 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Diagram type**: LLM classification result (primary_type, secondary_types, reasoning)
 - **Line metrics**: `content_lines` count
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
-- **Connection counts**: Per-category connection counts (e.g., `{"structural": 12}`)
+- **Connection counts**: Per-type connection counts (e.g., `{"inheritance": 5, "composition": 3}`)
 - **Validation flags**: Any detected issues from cross-validation
 
 ### 7.2 Reproducibility
