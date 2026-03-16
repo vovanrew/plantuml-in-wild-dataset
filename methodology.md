@@ -2,7 +2,7 @@
 
 ## 1. Data Source
 
-The dataset was constructed using the World of Code (WoC) project, a comprehensive collection of open-source repositories maintained by the University of Tennessee, Knoxville. We utilized the WoC Version 3 snapshot dated October 6 2023, which provides access to over 200 million unique source code files through a distributed infrastructure across multiple servers.
+The dataset was constructed using the World of Code (WoC) project [1], a comprehensive collection of open-source repositories maintained by the University of Tennessee, Knoxville. We utilized the WoC Version 3 snapshot dated October 6 2023, which provides access to over 200 million unique source code files through a distributed infrastructure across multiple servers.
 
 The primary data structure used was the **lb2fFull basemap**, consisting of 128 sharded files that map blob identifiers (SHA-1 hashes) to their corresponding file paths in the format `blob_id;file_path`. These basemaps are stored in `/da8_data/basemaps/gz/` and provide comprehensive coverage of file-level metadata across the indexed repositories.
 
@@ -220,13 +220,12 @@ In `classification_methodology.md` and `counting_methodology.md`
 
 Each diagram in the final dataset is associated with comprehensive metadata:
 - **Blob ID**: SHA-1 hash serving as unique identifier
-- **Original file path**: Path in source repository
-- **Source repository**: GitHub URL (via WoC b2P mapping)
+- **Original path** (`original_path`): File path within the source repository (e.g., `/src/main/java/ex42/App.puml`)
+- **Repository** (`repository`): WoC project identifier from the b2P mapping, in the format `{username}_{reponame}` (e.g., `HaoQNguyen_nguyen-COP3330-assignment3`). The corresponding GitHub URL can be constructed as `https://github.com/{username}/{reponame}`. For 1,424 diagrams (1.0%), the WoC b2P mapping did not contain a project entry for the blob; these have `repository` set to `null`. The diagrams are retained in the dataset as they are valid UML content — the missing attribution reflects incomplete coverage of the WoC b2P basemap, not a data quality issue
 - **Diagram type**: LLM classification result (primary_type, secondary_types, reasoning)
 - **Line metrics**: `content_lines` count
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
 - **Connection counts**: Per-type connection counts (e.g., `{"inheritance": 5, "composition": 3}`)
-- **Validation flags**: Any detected issues from cross-validation
 
 ### 7.2 Reproducibility
 
@@ -254,28 +253,51 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 - Format: PNG images + PlantUML source code
 - Metadata: JSON format with blob-level attribution
 
-## 9. Ethical Considerations and Licensing
+## 9. Limitations
+
+### 9.1 Temporal Scope
+
+The dataset is derived exclusively from World of Code (WoC) Version 3, a snapshot dated October 6, 2023. It therefore reflects the state of open-source repositories indexed up to that date and does not capture PlantUML diagrams created or modified after the snapshot. Any future replication using a newer WoC version may yield different counts and distributions as repositories evolve.
+
+### 9.2 Parser-Based Extraction Coverage
+
+The Java-based DiagramStatsExtractor used for element and connection counting does not support all PlantUML diagram types. Of the 143,427 diagrams in the final dataset, 347 (0.2%) could not be processed by the parser, resulting in empty element and connection fields (`elements_total = 0`, `connections_total = 0`). The aggregate element and connection statistics (distributions, mean, median, quartiles) reported in the metadata are computed over the 143,080 successfully extracted records only.
+
+The extraction failures break down as follows:
+
+| Error Type | Count | Description |
+|------------|-------|-------------|
+| `unsupported_type:TimingDiagram` | 178 | Timing diagrams not supported by the parser |
+| `unsupported_type:NewpagedDiagram` | 167 | Multi-page diagrams not supported by the parser |
+| `unsupported_type:PSystemMath` | 1 | Math formula block |
+| `unsupported_type:PSystemVersion` | 1 | Version info block |
+
+Notably, 178 of the 189 timing diagrams (94.2%) lack element and connection data due to the parser limitation. Only 11 timing diagrams were successfully parsed. Researchers using element/connection counts for timing diagrams should be aware of this near-complete gap. The `extraction_error` field in the metadata identifies all affected records.
+
+## 10. Ethical Considerations and Licensing
 
 All source code was obtained from publicly accessible repositories indexed by the World of Code project. The dataset preserves attribution to original repositories through blob-to-project mappings, enabling proper citation and license compliance. Users of this dataset are advised to respect the licenses of source repositories when utilizing the diagrams for research or commercial purposes.
 
-### 9.1 Dataset License
+### 10.1 Dataset License
 
-This dataset is released under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**. This license allows:
+The **dataset compilation** — including the selection and arrangement of diagrams, all metadata (classification labels, element/connection counts, line metrics), and the pipeline scripts — is released under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**. This license allows:
 - **Sharing**: Copying and redistributing the material in any medium or format
 - **Adaptation**: Remixing, transforming, and building upon the material for any purpose, including commercial use
 
 Under the condition that appropriate credit is given, a link to the license is provided, and any changes are indicated.
 
-### 9.2 Attribution Requirements
+**Important**: CC-BY-4.0 applies to the dataset as a curated collection, not to the individual PlantUML source files or their rendered images. Each source file originates from an open-source repository with its own license (e.g., MIT, Apache-2.0, GPL, or others). Users must consult the original repository license before reusing individual files beyond research fair-use. The metadata includes source repository attribution (via WoC blob-to-project mapping) to facilitate license verification. This approach is consistent with established research code datasets such as The Stack and CodeSearchNet, which similarly distinguish between compilation-level and file-level licensing.
+
+### 10.2 Attribution Requirements
 
 When using this dataset, please:
 1. **Cite the dataset** using the Zenodo DOI: [DOI PLACEHOLDER - to be updated after upload]
 2. **Acknowledge the data source**: World of Code (WoC) Version 3 (October 2023 snapshot)
-3. **Respect original repository licenses**: Individual diagrams may be subject to their original repository licenses. The metadata includes source repository URLs (`file_path` field) to facilitate license verification
+3. **Verify original licenses before file-level reuse**: Individual PlantUML source files and their rendered images remain under their original repository licenses. The metadata provides the `repository` field (WoC project identifier in `{username}_{reponame}` format) and the `original_path` field, from which the source GitHub repository can be located and its license verified. Aggregate and statistical use of the dataset (e.g., corpus-level analysis, diagram type distributions) falls under the CC-BY-4.0 compilation license
 
-### 9.3 Data Provenance
+### 10.3 Data Provenance
 
-Each diagram in the dataset includes metadata linking back to its source repository, ensuring full traceability and enabling users to verify original licensing terms when required for specific use cases.
+Each diagram in the dataset includes metadata linking back to its source repository through two fields: (1) `repository` — a WoC project identifier derived from the blob-to-project (b2P) mapping, stored in `{username}_{reponame}` format (e.g., `HaoQNguyen_nguyen-COP3330-assignment3`), from which the GitHub URL can be constructed as `https://github.com/{username}/{reponame}`; and (2) `original_path` — the file path within that repository (e.g., `/src/main/java/ex42/App.puml`). Together, these provide full traceability from any diagram in the dataset to its origin, enabling users to verify original licensing terms, inspect surrounding project context, and ensure compliance when reusing individual files beyond the scope of the CC-BY-4.0 compilation license.
 
 **Tools and Dependencies**:
 - World of Code V3 (Oct 7 2023 snapshot)
@@ -283,3 +305,7 @@ Each diagram in the dataset includes metadata linking back to its source reposit
 - Python 3.8+ (libraries: python-woc, multiprocessing, base64, gzip, json, re)
 - Java Runtime Environment 11+
 - GNU utilities: grep, sed, sort, find, zcat
+
+## References
+
+[1] Y. Ma, T. Dey, C. Bogart, S. Amreen, M. Valiev, A. Tutko, D. Kennard, R. Zaretzki, and A. Mockus, "World of code: Enabling a research workflow for mining and analyzing the universe of open source VCS data," *Empirical Software Engineering*, vol. 26, no. 2, p. 22, 2021. doi: [10.1007/s10664-020-09905-9](https://doi.org/10.1007/s10664-020-09905-9)
