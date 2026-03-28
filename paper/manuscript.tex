@@ -35,7 +35,7 @@
 
 %=================================================================
 % Title
-\Title{UML-in-the-Wild: A Large-Scale Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories}
+\Title{UML-in-the-Wild: A Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories}
 
 % Author ORCID IDs
 \newcommand{\orcidauthorA}{0009-0000-2161-4560}
@@ -79,7 +79,7 @@ A key obstacle to advancing empirical research on UML is the scarcity of large-s
 
 Several efforts have been made to address this gap. Karasneh and Chaudron~\cite{karasneh2013img2uml} created the Img2UML repository with approximately 1000 class models in XMI format extracted from web sources. The Lindholmen dataset~\cite{hebig2016quest,robles2017extensive}, the largest prior collection, comprises over 93,000 UML files mined from GitHub in image, XMI, and textual formats, but does not classify diagrams by type and does not include PlantUML files. A subsequent reflection by Robles et al.~\cite{robles2023reflection} discussed lessons learned from the Lindholmen dataset, noting that format heterogeneity and the absence of structured metadata posed challenges for downstream research. More recently, Romeo et al.~\cite{romeo2025uml} studied UML evolution across 552 GitHub repositories, identifying 9875 UML files in 29 different formats including PlantUML, with selection criteria (projects with over 2000 commits, 100 stars, and 10 contributors) targeting well-established projects. Notably, their findings confirm that PlantUML is the most prevalent UML format by file extension in contemporary open-source projects. St\"{o}rrle et al.~\cite{storrle2014index} documented a broader problem: of 12 reported model corpora, only 5 were active at the time of their survey, highlighting the fragility of research datasets in this domain.
 
-At the same time, the demand for UML diagram data has grown substantially with the rise of machine learning applications in software engineering. Recent work has applied convolutional neural networks~\cite{gosala2021classification} and vision transformers~\cite{groundtruth2024} to UML diagram classification, but these efforts rely on small curated image datasets (2626--3282 images). Multimodal large language models have also been used to generate PlantUML code from diagram images~\cite{bates2025umlcodegen}, further underscoring the need for large-scale, machine-parseable UML datasets that go beyond image collections. Table~\ref{tab:dataset-comparison} compares the existing UML datasets with the dataset presented in this work.
+At the same time, the demand for UML diagram data has grown substantially with the rise of machine learning applications in software engineering. Recent work has applied convolutional neural networks~\cite{gosala2021classification} and vision transformers~\cite{groundtruth2024} to UML diagram classification, but these efforts rely on small curated image datasets (2626--3282 images). Multimodal large language models have also been used to generate PlantUML code from diagram images~\cite{camara2024image,bates2025umlcodegen}, further underscoring the need for large-scale, machine-parseable UML datasets that go beyond image collections. Table~\ref{tab:dataset-comparison} compares the existing UML datasets with the dataset presented in this work.
 
 \begin{table}[H]
 \caption{Comparison of existing UML diagram datasets.\label{tab:dataset-comparison}}
@@ -400,7 +400,7 @@ Of the 163,946 classified diagrams, 20,434 (12.5\%) were assigned the \texttt{no
 
 To quantify the structural complexity of each diagram, we developed a parser-based extraction tool that counts typed elements (nodes) and connections (edges). Rather than using regular expressions---which would require reimplementing PlantUML's handling of multiple syntactic forms for the same construct, alias resolution, namespace qualification, macro expansion, and file includes---the tool reuses PlantUML's own parsing pipeline. This ensures that element and connection counts reflect the same interpretation of the source that the compiler applies when rendering.
 
-The tool is implemented as a Java class (\texttt{DiagramStatsExtractor}) embedded within the PlantUML source tree (version~1.2025.9). For each input file, it invokes PlantUML's full parsing pipeline---preprocessing (macro expansion, \texttt{!include} resolution, conditional compilation), diagram type detection, and type-specific command interpretation---to produce a fully resolved diagram object. The tool then inspects this object to extract per-type element and connection counts. No modifications were made to PlantUML's parsing logic, command definitions, or diagram construction code.
+The tool is implemented as a Java class (\texttt{DiagramStatsExtractor}) embedded within the PlantUML source tree (version~1.2025.9)\footnote{Available at \url{https://github.com/vovanrew/plantuml}, archived at \url{https://doi.org/10.5281/zenodo.19288003}.}. For each input file, it invokes PlantUML's full parsing pipeline---preprocessing (macro expansion, \texttt{!include} resolution, conditional compilation), diagram type detection, and type-specific command interpretation---to produce a fully resolved diagram object. The tool then inspects this object to extract per-type element and connection counts. No modifications were made to PlantUML's parsing logic, command definitions, or diagram construction code.
 
 Three extraction strategies are dispatched based on the diagram's internal representation. The \emph{entity-link strategy} handles six diagram types (class, object, component, deployment, use case, and state) that share a common internal representation with separate entity and link collections. Elements are read from the entity collection and typed by their internal label (e.g., \texttt{class}, \texttt{interface}, \texttt{enum}, \texttt{component}, \texttt{state}, \texttt{usecase}, \texttt{package}). Connections are read from the link collection. When a link carries different decorations on each end, the tool classifies it by the more semantically specific one, following a priority order: \texttt{extends}, \texttt{composition}, \texttt{aggregation}, \texttt{arrow}, \texttt{none} (with two rarely occurring UML redefinition types, \texttt{redefines} and \texttt{definedby}, ranked between \texttt{aggregation} and \texttt{arrow}).
 
@@ -461,7 +461,7 @@ We anticipate several lines of reuse for this dataset: empirical studies of how 
 
 \informedconsent{Not applicable.}
 
-\dataavailability{The dataset is openly available on Zenodo at \url{https://doi.org/10.5281/zenodo.18952372} under the CC-BY-4.0 license. It contains 143,427 PlantUML source files, 144,487 rendered PNG images, and a JSON metadata file with per-diagram classification and structural metrics.}
+\dataavailability{The dataset is openly available on Zenodo at \url{https://doi.org/10.5281/zenodo.18952372} under the CC-BY-4.0 license. It contains 143,427 PlantUML source files, 144,487 rendered PNG images, and a JSON metadata file with per-diagram classification and structural metrics. The extraction pipeline source code is available at \url{https://doi.org/10.5281/zenodo.19298761}. The element and connection extraction tool (DiagramStatsExtractor) is available at \url{https://doi.org/10.5281/zenodo.19288003}.}
 
 \acknowledgments{The authors thank the World of Code team at the University of Tennessee, Knoxville, for providing access to the WoC infrastructure used for data extraction. During the preparation of this work, the authors used Claude (Anthropic) for automated diagram type classification (Claude Haiku~4.5) and for assistance with manuscript drafting and editing. The authors have reviewed and edited all AI-generated outputs and take full responsibility for the content of this publication.}
 
@@ -502,49 +502,49 @@ PNG   & Portable Network Graphics \\
 \begin{thebibliography}{999}
 
 \bibitem{ma2021world}
-Ma,~Y.; Dey,~T.; Bogart,~C.; Amreen,~S.; Valiev,~M.; Tutko,~A.; Kennard,~D.; Zaretzki,~R.; Mockus,~A. World of Code: Enabling a Research Workflow for Mining and Analyzing the Universe of Open Source VCS Data. {\em Empir. Softw. Eng.} {\bf 2021}, {\em 26}, 22. \url{https://doi.org/10.1007/s10664-020-09905-9}
+Ma,~Y.; Dey,~T.; Bogart,~C.; Amreen,~S.; Valiev,~M.; Tutko,~A.; Kennard,~D.; Zaretzki,~R.L.; Mockus,~A. World of Code: Enabling a Research Workflow for Mining and Analyzing the Universe of Open Source VCS Data. {\em Empir. Softw. Eng.} {\bf 2021}, {\em 26}, 22. \url{https://doi.org/10.1007/s10664-020-09905-9}
 
 \bibitem{petre2013uml}
-Petre,~M. UML in Practice. In Proceedings of the 35th International Conference on Software Engineering (ICSE), San Francisco, CA, USA, 18--26 May 2013; pp. 722--731.
+Petre,~M. UML in Practice. In Proceedings of the 35th International Conference on Software Engineering (ICSE), San Francisco, CA, USA, 18--26 May 2013; pp. 722--731. \url{https://doi.org/10.1109/ICSE.2013.6606618}
 
 \bibitem{reggio2014who}
-Reggio,~G.; Leotta,~M.; Ricca,~F. Who Knows/Uses What of the UML: A Personal Opinion Survey. In Proceedings of the 17th International Conference on Model Driven Engineering Languages and Systems (MODELS), Valencia, Spain, 28 September--3 October 2014; pp. 149--165.
+Reggio,~G.; Leotta,~M.; Ricca,~F. Who Knows/Uses What of the UML: A Personal Opinion Survey. In Proceedings of the 17th International Conference on Model Driven Engineering Languages and Systems (MODELS), Valencia, Spain, 28 September--3 October 2014; pp. 149--165. \url{https://doi.org/10.1007/978-3-319-11653-2_10}
 
 \bibitem{hoquang2017practices}
-Ho-Quang,~T.; Hebig,~R.; Robles,~G.; Chaudron,~M.R.V.; Fernandez,~M.A. Practices and Perceptions of UML Use in Open Source Projects. In Proceedings of the IEEE/ACM 39th International Conference on Software Engineering: Software Engineering in Practice Track (ICSE-SEIP), Buenos Aires, Argentina, 20--28 May 2017; pp. 203--212.
+Ho-Quang,~T.; Hebig,~R.; Robles,~G.; Chaudron,~M.R.V.; Fern\'{a}ndez,~M.A. Practices and Perceptions of UML Use in Open Source Projects. In Proceedings of the IEEE/ACM 39th International Conference on Software Engineering: Software Engineering in Practice Track (ICSE-SEIP), Buenos Aires, Argentina, 20--28 May 2017; pp. 203--212. \url{https://doi.org/10.1109/ICSE-SEIP.2017.28}
 
 \bibitem{karasneh2013img2uml}
-Karasneh,~B.; Chaudron,~M.R.V. Online Img2UML Repository: An Online Repository for UML Models. In Proceedings of the 3rd International Workshop on Experiences and Empirical Studies in Software Modeling (EESSMod), Miami, FL, USA, 29 September 2013.
+Karasneh,~B.; Chaudron,~M.R.V. Online Img2UML Repository: An Online Repository for UML Models. In Proceedings of the 3rd International Workshop on Experiences and Empirical Studies in Software Modeling (EESSMod), Miami, FL, USA, 1 October 2013; pp. 61--66.
 
 \bibitem{hebig2016quest}
-Hebig,~R.; Ho-Quang,~T.; Robles,~G.; Fernandez,~M.A.; Chaudron,~M.R.V. The Quest for Open Source Projects That Use UML: Mining GitHub. In Proceedings of the ACM/IEEE 19th International Conference on Model Driven Engineering Languages and Systems (MODELS), Saint-Malo, France, 2--7 October 2016; pp. 173--183.
+Hebig,~R.; Ho-Quang,~T.; Chaudron,~M.R.V.; Robles,~G.; Fern\'{a}ndez,~M.A. The Quest for Open Source Projects That Use UML: Mining GitHub. In Proceedings of the ACM/IEEE 19th International Conference on Model Driven Engineering Languages and Systems (MODELS), Saint-Malo, France, 2--7 October 2016; pp. 173--183. \url{https://doi.org/10.1145/2976767.2976778}
 
 \bibitem{robles2017extensive}
-Robles,~G.; Ho-Quang,~T.; Hebig,~R.; Chaudron,~M.R.V.; Fernandez,~M.A. An Extensive Dataset of UML Models in GitHub. In Proceedings of the 14th International Conference on Mining Software Repositories (MSR), Buenos Aires, Argentina, 20--21 May 2017; pp. 461--464. \url{https://doi.org/10.1109/MSR.2017.48}
+Robles,~G.; Ho-Quang,~T.; Hebig,~R.; Chaudron,~M.R.V.; Fern\'{a}ndez,~M.A. An Extensive Dataset of UML Models in GitHub. In Proceedings of the 14th International Conference on Mining Software Repositories (MSR), Buenos Aires, Argentina, 20--21 May 2017; pp. 519--522. \url{https://doi.org/10.1109/MSR.2017.48}
 
 \bibitem{robles2023reflection}
-Robles,~G.; Chaudron,~M.R.V.; Jolak,~R.; Hebig,~R. A Reflection on the Impact of Model Mining from GitHub. {\em Inf. Softw. Technol.} {\bf 2023}, {\em 164}, 107316.
+Robles,~G.; Chaudron,~M.R.V.; Jolak,~R.; Hebig,~R. A Reflection on the Impact of Model Mining from GitHub. {\em Inf. Softw. Technol.} {\bf 2023}, {\em 164}, 107317. \url{https://doi.org/10.1016/j.infsof.2023.107317}
 
 \bibitem{romeo2025uml}
-Romeo,~J.; Raglianti,~M.; Nagy,~C.; Lanza,~M. UML Is Back. Or Is It? Investigating the Past, Present, and Future of UML in Open Source Software. In Proceedings of the 47th International Conference on Software Engineering (ICSE), Ottawa, ON, Canada, 26 April--4 May 2025.
+Romeo,~J.; Raglianti,~M.; Nagy,~C.; Lanza,~M. UML Is Back. Or Is It? Investigating the Past, Present, and Future of UML in Open Source Software. In Proceedings of the 47th International Conference on Software Engineering (ICSE), Ottawa, ON, Canada, 27 April--3 May 2025; pp. 2342--2354. \url{https://doi.org/10.1109/ICSE55347.2025.00155}
 
 \bibitem{storrle2014index}
-St\"{o}rrle,~H.; Hebig,~R.; Knapp,~A. An Index for Software Engineering Models. In Proceedings of the Joint MODELS 2014 Poster Session and ACM Student Research Competition, Valencia, Spain, 28 September--3 October 2014.
+St\"{o}rrle,~H.; Hebig,~R.; Knapp,~A. An Index for Software Engineering Models. In Proceedings of the Joint MODELS 2014 Poster Session and ACM Student Research Competition, Valencia, Spain, 28 September--3 October 2014; pp. 36--40.
 
 \bibitem{groundtruth2024}
-Ho-Quang,~T.; Bergstr\"{o}m,~G.; Chaudron,~M.R.V. Creating and Validating a Ground Truth Dataset of Unified Modeling Language Diagrams Using Deep Learning Techniques. {\em Appl. Sci.} {\bf 2024}, {\em 14}, 10873. \url{https://doi.org/10.3390/app142310873}
+Torcal,~J.; Moreno,~V.; Llorens,~J.; Granados,~A. Creating and Validating a Ground Truth Dataset of Unified Modeling Language Diagrams Using Deep Learning Techniques. {\em Appl. Sci.} {\bf 2024}, {\em 14}, 10873. \url{https://doi.org/10.3390/app142310873}
 
 \bibitem{gosala2021classification}
-Gosala,~B.; Chowdhuri,~S.R.; Singh,~J.P.; Gupta,~S.; Mishra,~D. Automatic Classification of UML Class Diagrams Using Deep Learning Technique: Convolutional Neural Network. {\em Appl. Sci.} {\bf 2021}, {\em 11}, 4267. \url{https://doi.org/10.3390/app11094267}
+Gosala,~B.; Chowdhuri,~S.R.; Singh,~J.; Gupta,~M.; Mishra,~A. Automatic Classification of UML Class Diagrams Using Deep Learning Technique: Convolutional Neural Network. {\em Appl. Sci.} {\bf 2021}, {\em 11}, 4267. \url{https://doi.org/10.3390/app11094267}
 
 \bibitem{bates2025umlcodegen}
 Bates,~A.; Vavricka,~R.; Carleton,~S.; Shao,~R.; Pan,~C. Unified Modeling Language Code Generation from Diagram Images Using Multimodal Large Language Models. {\em Mach. Learn. Appl.} {\bf 2025}, {\em 20}, 100660. \url{https://doi.org/10.1016/j.mlwa.2025.100660}
 
 \bibitem{camara2024image}
-Camara,~J.; Mikkonen,~T.; Taibi,~D. From Image to UML: First Results of Image-Based UML Diagram Generation Using LLMs. In Proceedings of the LLM4MDE Workshop at STAF, Enschede, The Netherlands, 8--12 July 2024. {\em arXiv} {\bf 2024}, arXiv:2404.11376.
+Conrardy,~A.; Cabot,~J. From Image to UML: First Results of Image-Based UML Diagram Generation Using LLMs. In Proceedings of the LLM4MDE Workshop at STAF 2024, Enschede, The Netherlands, 8--11 July 2024; pp. 55--65.
 
 \bibitem{pfdial2025}
-Kong,~L.; Gao,~Y.; Li,~Z.; Yang,~M. PFDial: A Structured Dialogue Instruction Fine-Tuning Method Based on UML Flowcharts. In Findings of ACL 2025. {\em arXiv} {\bf 2025}, arXiv:2503.06706.
+Zhang,~M.; Wang,~Y.; Shen,~Y.; Yang,~T.; Jiang,~C.; Wu,~Y.; Dou,~S.; Chen,~Q.; Xi,~Z.; Zhang,~Z.; Dong,~Y.; Wang,~Z.; Fei,~Z.; Wan,~M.; Liang,~T.; Ma,~G.; Zhang,~Q.; Gui,~T.; Huang,~X. PFDial: A Structured Dialogue Instruction Fine-Tuning Method Based on UML Flowcharts. In Findings of the Association for Computational Linguistics: ACL 2025, Vienna, Austria, 2025; pp. 2626--2649. \url{https://doi.org/10.18653/v1/2025.findings-acl.134}
 
 \end{thebibliography}
 
