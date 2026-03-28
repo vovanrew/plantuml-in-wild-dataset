@@ -7,7 +7,7 @@ Research dataset of 143,427 UML diagrams (9 standard types) extracted from open-
 ## Project Structure
 
 ```
-methodology.md                  # Main methodology document (source of truth for the paper)
+pipeline_methodology.md                  # Main methodology document (source of truth for the paper)
 classification_methodology.md   # LLM vs parser classification validation details
 counting_methodology.md         # Parser-based element/connection extraction (Java tool)
 
@@ -48,7 +48,7 @@ Phase 3 (local) → classification JSON + validation reports + figures
 
 ## Methodology Documents
 
-`methodology.md` is the primary document describing the full pipeline for the paper. It references:
+`pipeline_methodology.md` is the primary document describing the full pipeline for the paper. It references:
 - `classification_methodology.md` for LLM vs parser classification validation
 - `counting_methodology.md` for the Java-based DiagramStatsExtractor tool
 
@@ -64,5 +64,5 @@ When updating pipeline scripts, keep methodology docs in sync.
 ## Common Tasks
 
 - **Rerun pipeline**: Execute phases sequentially; phase2 step 1 reads phase1 output, each subsequent step reads the previous step's output in-place
-- **Update methodology numbers**: After rerun, update all TBD values in `methodology.md` §5.2 (compilation table), §6.1 (line distribution), and §8 (final stats)
+- **Update methodology numbers**: After rerun, update all TBD values in `pipeline_methodology.md` §5.2 (compilation table), §6.1 (line distribution), and §8 (final stats)
 - **Add visualization**: Follow existing pattern in `phase3/visualizations/` — 600 DPI, Arial font, 180mm width for MDPI compliance

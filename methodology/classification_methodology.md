@@ -26,9 +26,15 @@ sprite $drupal [48x48/16] {
 
 These are not diagrams in the traditional UML sense — they are reusable icon assets for inclusion in other diagrams. The LLM correctly identifies them as not fitting any standard UML diagram type.
 
+## PlantUML's Internal Type Architecture
+
+All nine UML diagram types use the single `@startuml` keyword — there is no `@startclass` or `@startsequence`. PlantUML determines the diagram type at parse time by passing the file content through an ordered chain of type-specific factories; the first factory whose syntax rules match the content claims the diagram. Internally, several of the nine UML types share a parser and data model: class and object diagrams are both handled by `ClassDiagram`, while component, use case, and deployment diagrams are all processed as `DescriptionDiagram` (PlantUML's `DESCRIPTION` type), distinguished only by which element shapes (`LeafType`, `USymbol`) are rendered. Sequence, activity, state, and timing each have their own dedicated parser and data model. The nine user-facing types thus collapse into six distinct internal diagram classes.
+
+This architecture has two consequences for the dataset: (1) extension-based filtering (Phase 1) captures all UML types without needing type-specific keywords, but cannot determine diagram type — motivating the LLM classifier; and (2) the parser's coarser type system limits cross-validation to a 5-category taxonomy, as described below.
+
 ## Structural Cross-Validation via PlantUML Parser
 
-The LLM classification targets the standard UML taxonomy (9 diagram types), assigning each diagram a semantic type based on its content and intent. To cross-validate these assignments, we compared them against PlantUML's own structural parser, which recognizes diagram types based on syntax. Neither system serves as ground truth — the LLM performs semantic classification while the parser performs structural analysis — so the comparison measures inter-method agreement rather than accuracy against an authoritative reference. The parser produces a coarser 5-type taxonomy due to PlantUML's internal architecture, so cross-validation requires mapping the LLM's finer UML types to the parser's coarser categories:
+The LLM classification targets the standard UML taxonomy (9 diagram types), assigning each diagram a semantic type based on its content and intent. To cross-validate these assignments, we compared them against PlantUML's own structural parser, which recognizes diagram types based on syntax. Neither system serves as ground truth — the LLM performs semantic classification while the parser performs structural analysis — so the comparison measures inter-method agreement rather than accuracy against an authoritative reference. The parser produces a coarser 5-type taxonomy due to the architectural collapsing described above, so cross-validation requires mapping the LLM's finer UML types to the parser's coarser categories:
 
 | Parser type | LLM types it covers | Reason |
 |---|---|---|

@@ -5,7 +5,8 @@ phase2/.DS_Store
 phase2/metadata/
 phase3/validation/.DS_Store
 plans/
-phase4/llm-classify-results/
 */pycache/
-test_sample_100/
-rerun
+rerun/
+__pycache__/
+tasks.md
+.claude/

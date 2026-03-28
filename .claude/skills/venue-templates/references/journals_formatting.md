@@ -448,6 +448,52 @@ Comprehensive formatting requirements and submission guidelines for major scient
 
 ---
 
+## MDPI Journals
+
+### MDPI Data
+
+**Journal Type**: Open-access data descriptor journal
+**Publisher**: Multidisciplinary Digital Publishing Institute (MDPI)
+**Impact Factor**: ~2.9 (2024), Q2
+
+**Formatting Requirements**:
+- **Length**: No strict limit (Data Descriptors typically 3,000–6,000 words)
+- **Structure (Data Descriptor)**: Title, Authors, Affiliations, Abstract, Keywords, Dataset info (DOI, license), Summary, Data Description, Methods, Usage Notes (optional), Author Contributions, Funding, Data Availability Statement, Acknowledgments, Conflicts of Interest, References
+- **Format**: Single column (LaTeX or Word)
+- **Font**: Palatino (via `mdpi.cls`)
+- **Line spacing**: Single-spaced in template
+- **Margins**: Set by `mdpi.cls`
+- **Citations**: Numbered sequentially in square brackets [1], [2], [3]
+- **References**: MDPI/ACS style (`mdpi.bst`)
+  - Format: Author 1, A.B.; Author 2, C.D. Title of the Article. *Abbreviated Journal Name* **Year**, *Volume*, page range.
+  - Example: Ma, Y.; Dey, T.; Bogart, C. World of Code: Enabling a Research Workflow. *Empir. Softw. Eng.* **2021**, *26*, 22.
+- **Figures**:
+  - Format: PNG, JPEG, TIFF
+  - Resolution: 600+ dpi preferred, 300 dpi minimum
+  - Color: RGB
+  - Size: Max 180 mm (full page) or 85 mm (single column)
+  - Placement: Inline after first citation
+  - Caption: Below figure
+- **Tables**: Inline, caption above, `booktabs` style, no vertical lines
+- **Graphical Abstract**: Required (min 560 x 1100 px)
+- **Data Availability**: Statement with repository DOI required
+- **Open Access**: All articles open access (APC ~$1,600)
+- **Special**: Dataset must be publicly deposited before submission (Zenodo, Figshare, Dryad)
+
+**LaTeX Document Class**: `\documentclass[data,datadescriptor,submit,pdftex,moreauthors]{Definitions/mdpi}`
+
+**Detailed Style Guide**: `references/mdpi_data_style.md`
+
+**Author Guidelines**: https://www.mdpi.com/journal/data/instructions
+
+---
+
+### Other MDPI Journals
+
+**Formatting**: All MDPI journals share `mdpi.cls`. Change the journal name in the document class option (e.g., `information`, `electronics`, `sensors`).
+
+---
+
 ## Quick Reference Table
 
 | Journal | Max Length | Format | Citations | Template |
@@ -461,6 +507,7 @@ Comprehensive formatting requirements and submission guidelines for major scient
 | **Springer** | Variable | Single col | Numbered/author-yr | `springer_article.tex` |
 | **BMC** | Unlimited | Single col | [1] Vancouver | `bmc_article.tex` |
 | **Frontiers** | ~12 pages | Single col | Numbered | `frontiers_article.tex` |
+| **MDPI Data** | ~3,000–6,000 | Single col | [1] Numbered | `mdpi.cls` |
 
 ---
 
@@ -481,6 +528,7 @@ Many journals provide official LaTeX templates:
 - **ACM**: acmart class (CTAN)
 - **Elsevier**: elsarticle class (CTAN)
 - **Springer**: svjour3 class (journal website)
+- **MDPI**: mdpi.cls (https://www.mdpi.com/authors/latex or Overleaf template gallery)
 
 Check journal's "For Authors" or "Submit" page for the most current templates.
 

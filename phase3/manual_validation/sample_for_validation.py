@@ -62,13 +62,6 @@ def stratified_sample(
     return sampled
 
 
-def format_dict(d: Dict[str, int]) -> str:
-    """Format a dict of counts as a readable string for CSV."""
-    if not d:
-        return ''
-    return '; '.join(f'{k}: {v}' for k, v in sorted(d.items()))
-
-
 def export_sample(
     sampled: Dict[str, List[str]],
     classifications: Dict[str, Dict],
@@ -80,7 +73,6 @@ def export_sample(
     Export sampled files with metadata for manual validation.
 
     Creates:
-    - validation_sample.psv: Pipe-delimited file for manual review
     - validation_sample.json: Full metadata for each sample
     - puml/: Copied PUML source files (if available)
     - images/: Copied PNG images (if available)
@@ -113,17 +105,18 @@ def export_sample(
                 'classified_type': data.get('primary_type', ''),
                 'content_lines': data.get('content_lines', 0),
                 'elements': data.get('elements', {}),
-                'total_elements': data.get('total_elements', 0),
+                'total_elements': data.get('elements_total', 0),
                 'connections': data.get('connections', {}),
-                'total_connections': data.get('total_connections', 0),
+                'total_connections': data.get('connections_total', 0),
                 # Fields to fill during manual review
-                'actual_type': '',
-                'elements_correct': '',
-                'actual_elements': '',
-                'actual_elements_count': '',
-                'connections_correct': '',
-                'actual_connections': '',
-                'actual_connections_count': '',
+                'actual_type': None,
+                'elements_correct': None,
+                'actual_elements': None,
+                'actual_elements_count': None,
+                'connections_correct': None,
+                'actual_connections': None,
+                'actual_connections_count': None,
+                'notes': None,
             }
             records.append(record)
 
@@ -140,38 +133,7 @@ def export_sample(
                 if img_src.exists():
                     shutil.copy2(img_src, output_dir / 'images' / img_name)
 
-    # Write PSV for manual review
-    psv_path = output_dir / 'validation_sample.csv'
-    with open(psv_path, 'w', encoding='utf-8') as f:
-        headers = ['sample_id', 'filename', 'classified_type', 'content_lines',
-                   'elements', 'total_elements', 'connections', 'total_connections',
-                   'actual_type', 'elements_correct', 'actual_elements',
-                   'actual_elements_count', 'connections_correct',
-                   'actual_connections', 'actual_connections_count']
-        f.write('|'.join(headers) + '\n')
-        for r in records:
-            elements_str = format_dict(r['elements'])
-            connections_str = format_dict(r['connections'])
-            row = [
-                str(r['sample_id']),
-                r['filename'],
-                r['classified_type'],
-                str(r['content_lines']),
-                elements_str,
-                str(r['total_elements']),
-                connections_str,
-                str(r['total_connections']),
-                r['actual_type'],
-                r['elements_correct'],
-                r['actual_elements'],
-                str(r['actual_elements_count']) if r['actual_elements_count'] != '' else '',
-                r['connections_correct'],
-                r['actual_connections'],
-                str(r['actual_connections_count']) if r['actual_connections_count'] != '' else '',
-            ]
-            f.write('|'.join(row) + '\n')
-
-    # Write full JSON metadata
+    # Write JSON metadata
     json_path = output_dir / 'validation_sample.json'
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump({
@@ -184,7 +146,6 @@ def export_sample(
         }, f, indent=2, ensure_ascii=False)
 
     print(f"\nExported {len(records)} samples to {output_dir}", file=sys.stderr)
-    print(f"  - PSV: {psv_path}", file=sys.stderr)
     print(f"  - JSON: {json_path}", file=sys.stderr)
 
 
@@ -262,9 +223,9 @@ def main():
     print(f"\nTotal samples: {total}", file=sys.stderr)
     print(f"Types covered: {len(sampled)}", file=sys.stderr)
     print("\nNext steps:", file=sys.stderr)
-    print("1. Review each diagram in validation_sample.psv", file=sys.stderr)
-    print("2. Fill in 'actual_type' if classified_type is wrong", file=sys.stderr)
-    print("3. Fill in 'elements_correct' / 'connections_correct' (Yes/No)", file=sys.stderr)
+    print("1. Review each diagram in validation_sample.json", file=sys.stderr)
+    print("2. Fill in 'actual_type', 'actual_elements', 'actual_connections'", file=sys.stderr)
+    print("3. Set 'elements_correct' / 'connections_correct' (true/false)", file=sys.stderr)
     print("4. Run analyze_validation_results.py to compute accuracy", file=sys.stderr)
 
 

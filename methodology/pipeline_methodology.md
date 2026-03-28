@@ -2,7 +2,7 @@
 
 ## 1. Data Source
 
-The dataset was constructed using the World of Code (WoC) project [1], a comprehensive collection of open-source repositories maintained by the University of Tennessee, Knoxville. We utilized the WoC Version 3 snapshot dated October 6 2023, which provides access to over 200 million unique source code files through a distributed infrastructure across multiple servers.
+The dataset was constructed using the World of Code (WoC) project [1], a comprehensive collection of open-source repositories maintained by the University of Tennessee, Knoxville. We utilized WoC Version V, collected based on repository updates identified during March 1–30, 2023, with git objects retrieved by mid-May 2023. This version indexes over 209 million repositories and 16.2 billion blobs (unique file contents) through a distributed infrastructure across multiple servers.
 
 The primary data structure used was the **lb2fFull basemap**, consisting of 128 sharded files that map blob identifiers (SHA-1 hashes) to their corresponding file paths in the format `blob_id;file_path`. These basemaps are stored in `/da8_data/basemaps/gz/` and provide comprehensive coverage of file-level metadata across the indexed repositories.
 
@@ -128,7 +128,9 @@ We implemented automated analysis to characterize diagram size using line counts
 
 ### 6.2 Diagram Type Classification
 
-We developed an LLM-based classifier using Claude Haiku 4.5 to categorize compiled diagrams into standard UML diagram types and to identify non-UML content for exclusion. The classifier leverages Anthropic's Message Batches API for cost-effective processing of all 163,946 compiled diagrams.
+PlantUML uses a single `@startuml` keyword for all nine UML diagram types, determining the specific type at parse time through an ordered factory chain that matches content against type-specific syntax rules. Internally, several types share a parser and data model (class/object → `ClassDiagram`; component/usecase/deployment → `DescriptionDiagram`), so the nine user-facing types collapse into six distinct internal classes. Because the keyword alone cannot identify the diagram type, an LLM-based classifier is needed.
+
+We developed this classifier using Claude Haiku 4.5 to categorize compiled diagrams into standard UML diagram types and to identify non-UML content for exclusion. The classifier leverages Anthropic's Message Batches API for cost-effective processing of all 163,946 compiled diagrams.
 
 #### 6.2.1 Supported Diagram Types
 
@@ -225,7 +227,7 @@ Each diagram in the final dataset is associated with comprehensive metadata:
 - **Diagram type**: LLM classification result (primary_type, secondary_types, reasoning)
 - **Line metrics**: `content_lines` count
 - **Element counts**: Per-type element counts (e.g., `{"class": 5, "interface": 2}`)
-- **Connection counts**: Per-type connection counts (e.g., `{"inheritance": 5, "composition": 3}`)
+- **Connection counts**: Per-type connection counts (e.g., `{"extends": 1, "composition": 2, "none": 1}`)
 
 ### 7.2 Reproducibility
 
@@ -257,7 +259,7 @@ All extraction, processing, and analysis scripts are version-controlled and docu
 
 ### 9.1 Temporal Scope
 
-The dataset is derived exclusively from World of Code (WoC) Version 3, a snapshot dated October 6, 2023. It therefore reflects the state of open-source repositories indexed up to that date and does not capture PlantUML diagrams created or modified after the snapshot. Any future replication using a newer WoC version may yield different counts and distributions as repositories evolve.
+The dataset is derived exclusively from World of Code (WoC) Version V, collected based on repository updates identified during March 2023, with git objects retrieved by mid-May 2023. It therefore reflects the state of open-source repositories indexed up to that date and does not capture PlantUML diagrams created or modified after the collection period. Any future replication using a newer WoC version may yield different counts and distributions as repositories evolve.
 
 ### 9.2 Parser-Based Extraction Coverage
 
@@ -273,6 +275,18 @@ The extraction failures break down as follows:
 | `unsupported_type:PSystemVersion` | 1 | Version info block |
 
 Notably, 178 of the 189 timing diagrams (94.2%) lack element and connection data due to the parser limitation. Only 11 timing diagrams were successfully parsed. Researchers using element/connection counts for timing diagrams should be aware of this near-complete gap. The `extraction_error` field in the metadata identifies all affected records.
+
+### 9.3 Selection Bias
+
+The extraction pipeline identifies PlantUML files solely by six dedicated file extensions (`.puml`, `.pu`, `.plantuml`, `.wsd`, `.iuml`, `.uml`). PlantUML diagrams embedded within other file formats — such as Markdown code blocks, AsciiDoc includes, or build tool configurations — are not captured. This means the dataset underrepresents PlantUML usage in documentation-as-code workflows where diagrams are inlined rather than stored in standalone files.
+
+### 9.4 Near-Duplicate Content
+
+Deduplication relies on SHA-1 blob hashing, which identifies only exact byte-for-byte copies. Diagrams that differ by minor edits — such as whitespace changes, comment additions, or trivial renaming — are treated as distinct entries. The dataset therefore may contain near-duplicate diagrams that are semantically identical or nearly so.
+
+### 9.5 PlantUML Version Dependency
+
+All diagrams were compiled using PlantUML version 1.2025.9. Compilation success, rendering output, and error classification are tied to this specific version. Newer or older PlantUML versions may produce different compilation results, render diagrams differently, or accept syntax that this version rejects (and vice versa). Researchers recompiling the source files should be aware of potential version-dependent differences.
 
 ## 10. Ethical Considerations and Licensing
 
@@ -292,7 +306,7 @@ Under the condition that appropriate credit is given, a link to the license is p
 
 When using this dataset, please:
 1. **Cite the dataset** using the Zenodo DOI: [DOI PLACEHOLDER - to be updated after upload]
-2. **Acknowledge the data source**: World of Code (WoC) Version 3 (October 2023 snapshot)
+2. **Acknowledge the data source**: World of Code (WoC) Version V (March–May 2023)
 3. **Verify original licenses before file-level reuse**: Individual PlantUML source files and their rendered images remain under their original repository licenses. The metadata provides the `repository` field (WoC project identifier in `{username}_{reponame}` format) and the `original_path` field, from which the source GitHub repository can be located and its license verified. Aggregate and statistical use of the dataset (e.g., corpus-level analysis, diagram type distributions) falls under the CC-BY-4.0 compilation license
 
 ### 10.3 Data Provenance
@@ -300,7 +314,7 @@ When using this dataset, please:
 Each diagram in the dataset includes metadata linking back to its source repository through two fields: (1) `repository` — a WoC project identifier derived from the blob-to-project (b2P) mapping, stored in `{username}_{reponame}` format (e.g., `HaoQNguyen_nguyen-COP3330-assignment3`), from which the GitHub URL can be constructed as `https://github.com/{username}/{reponame}`; and (2) `original_path` — the file path within that repository (e.g., `/src/main/java/ex42/App.puml`). Together, these provide full traceability from any diagram in the dataset to its origin, enabling users to verify original licensing terms, inspect surrounding project context, and ensure compliance when reusing individual files beyond the scope of the CC-BY-4.0 compilation license.
 
 **Tools and Dependencies**:
-- World of Code V3 (Oct 7 2023 snapshot)
+- World of Code Version V (March–May 2023)
 - PlantUML 1.2025.9
 - Python 3.8+ (libraries: python-woc, multiprocessing, base64, gzip, json, re)
 - Java Runtime Environment 11+
