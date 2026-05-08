@@ -2,6 +2,8 @@
 
 **A Large-Scale Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories**
 
+![UML-in-the-Wild: 143,427 UML diagrams from open-source repositories via World of Code](paper/graphical_abstract.png)
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18952372.svg)](https://doi.org/10.5281/zenodo.18952372)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
