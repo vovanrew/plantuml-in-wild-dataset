@@ -1,73 +1,47 @@
-%  LaTeX support: latex@mdpi.com
 %=================================================================
-\documentclass[data,datadescriptor,submit,pdftex,moreauthors]{Definitions/mdpi}
-
-%--------------------
-% Class Options:
-%   data            - Data journal
-%   datadescriptor  - Data Descriptor article type
-%   submit          - Line numbers on (changed to "accept" by editorial office)
-%   pdftex          - For pdfLaTeX compilation
-%   moreauthors     - Multiple authors
-%--------------------
+\documentclass[11pt]{article}
 
 %=================================================================
-% MDPI internal commands - do not modify
-\firstpage{1}
-\makeatletter
-\setcounter{page}{\@firstpage}
-\makeatother
-\pubvolume{1}
-\issuenum{1}
-\articlenumber{0}
-\pubyear{2026}
-\copyrightyear{2026}
-\datereceived{ }
-\daterevised{ }
-\dateaccepted{ }
-\datepublished{ }
-
-%=================================================================
-% Additional packages
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{authblk}
 \usepackage{url}
+\usepackage{hyperref}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, fit, backgrounds}
 
-%=================================================================
-% Title
-\Title{UML-in-the-Wild: A Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories}
-
-% Author ORCID IDs
-\newcommand{\orcidauthorA}{0009-0000-2161-4560}
-\newcommand{\orcidauthorB}{0000-0002-8358-9759}
-
-% Authors
-\Author{Volodymyr Polischuk $^{1,}$*\orcidA{} and Vladyslava Skidan $^{1}$\orcidB{}}
-
-% Affiliations
-\address{%
-$^{1}$ \quad Kyiv National University of Technologies and Design, 01011 Kyiv, Ukraine}
-
-% Corresponding author
-\corres{Correspondence: polishchuk.vl@knutd.edu.ua}
+% Centered / left-aligned variable-width column types used in the tables
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
 
 %=================================================================
-% Abstract
-\abstract{%
-% ~200 words, single paragraph, no citations, no headings.
-% Structure (without labels): Background, Methods, Results, Conclusions.
-Unified Modeling Language (UML) diagrams are widely used in software engineering, yet large-scale empirical datasets remain scarce. We present UML-in-the-Wild, a dataset of 143,427 UML diagrams extracted from open-source repositories via the World of Code infrastructure. The pipeline identifies PlantUML files by extension across 128 basemap shards, validates content markers, compiles diagrams using PlantUML, and classifies them into 9 standard UML types using a large language model (LLM)-based classifier. The dataset spans class (51.6\%), sequence (24.6\%), activity (6.8\%), component (5.7\%), use case (5.0\%), state (3.0\%), object (1.7\%), deployment (1.4\%), and timing (0.1\%) diagrams. Each diagram is provided as both PlantUML source and rendered Portable Network Graphics (PNG) image, accompanied by metadata including diagram type, structural element and connection counts, and source repository attribution. UML-in-the-Wild is the largest publicly available collection of real-world UML diagrams, enabling research in software engineering, model-driven engineering, and AI-based diagram analysis.}
+% Title and authors
+\title{UML-in-the-Wild: A Dataset of UML Diagrams in PlantUML Notation from Open-Source Repositories}
 
-% Keywords
-\keyword{UML diagrams; PlantUML; software engineering; open-source; dataset; World of Code; diagram classification}
-
-%=================================================================
-% Dataset fields (required for Data journal)
-\dataset{DOI: \url{https://doi.org/10.5281/zenodo.18952372}}
-\datasetlicense{CC-BY-4.0}
+\author[1]{Volodymyr Polischuk\thanks{Correspondence: polishchuk.vl@knutd.edu.ua \quad ORCID: 0009-0000-2161-4560}}
+\author[1]{Vladyslava Skidan\thanks{ORCID: 0000-0002-8358-9759}}
+\affil[1]{Kyiv National University of Technologies and Design, 01011 Kyiv, Ukraine}
+\date{}
 
 %=================================================================
 \begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent Unified Modeling Language (UML) diagrams are widely used in software engineering, yet large-scale empirical datasets remain scarce. We present UML-in-the-Wild, a dataset of 143,427 UML diagrams extracted from open-source repositories via the World of Code infrastructure. The pipeline identifies PlantUML files by extension across 128 basemap shards, validates content markers, compiles diagrams using PlantUML, and classifies them into 9 standard UML types using a large language model (LLM)-based classifier. The dataset spans class (51.6\%), sequence (24.6\%), activity (6.8\%), component (5.7\%), use case (5.0\%), state (3.0\%), object (1.7\%), deployment (1.4\%), and timing (0.1\%) diagrams. Each diagram is provided as both PlantUML source and rendered Portable Network Graphics (PNG) image, accompanied by metadata including diagram type, structural element and connection counts, and source repository attribution. UML-in-the-Wild is the largest publicly available collection of real-world UML diagrams, enabling research in software engineering, model-driven engineering, and AI-based diagram analysis.
+\end{abstract}
+
+\noindent\textbf{Keywords:} UML diagrams; PlantUML; software engineering; open-source; dataset; World of Code; diagram classification
+
+\vspace{1em}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Summary}
@@ -453,24 +427,24 @@ We anticipate several lines of reuse for this dataset: empirical studies of how 
 \vspace{6pt}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\authorcontributions{Conceptualization, V.P.; methodology, V.P.; software, V.P.; validation, V.P.; formal analysis, V.P.; data curation, V.P.; writing---original draft preparation, V.P.; writing---review and editing, V.S.; supervision, V.S. All authors have read and agreed to the published version of the manuscript.}
+\section*{Author Contributions}
+Conceptualization, V.P.; methodology, V.P.; software, V.P.; validation, V.P.; formal analysis, V.P.; data curation, V.P.; writing---original draft preparation, V.P.; writing---review and editing, V.S.; supervision, V.S. All authors have read and agreed to the published version of the manuscript.
 
-\funding{This research received no external funding.}
+\section*{Funding}
+This research received no external funding.
 
-\institutionalreview{Not applicable.}
+\section*{Data Availability}
+The dataset is openly available on Zenodo at \url{https://doi.org/10.5281/zenodo.18952372} under the CC-BY-4.0 license. It contains 143,427 PlantUML source files, 144,487 rendered PNG images, and a JSON metadata file with per-diagram classification and structural metrics. The extraction pipeline source code is available at \url{https://doi.org/10.5281/zenodo.19298761}. The element and connection extraction tool (DiagramStatsExtractor) is available at \url{https://doi.org/10.5281/zenodo.19288003}. The PlantUML source files were derived from the World of Code infrastructure~\cite{ma2021world} (version~V, snapshot of March--May 2023), maintained by the University of Tennessee, Knoxville; researcher access is available at \url{https://worldofcode.org/}.
 
-\informedconsent{Not applicable.}
+\section*{Acknowledgments}
+The authors thank the World of Code team at the University of Tennessee, Knoxville, for providing access to the WoC infrastructure used for data extraction. During the preparation of this work, the authors used Claude (Anthropic) for automated diagram type classification (Claude Haiku~4.5) and for assistance with manuscript drafting and editing. The authors have reviewed and edited all AI-generated outputs and take full responsibility for the content of this publication.
 
-\dataavailability{The dataset is openly available on Zenodo at \url{https://doi.org/10.5281/zenodo.18952372} under the CC-BY-4.0 license. It contains 143,427 PlantUML source files, 144,487 rendered PNG images, and a JSON metadata file with per-diagram classification and structural metrics. The extraction pipeline source code is available at \url{https://doi.org/10.5281/zenodo.19298761}. The element and connection extraction tool (DiagramStatsExtractor) is available at \url{https://doi.org/10.5281/zenodo.19288003}. The PlantUML source files were derived from the World of Code infrastructure~\cite{ma2021world} (version~V, snapshot of March--May 2023), maintained by the University of Tennessee, Knoxville; researcher access is available at \url{https://worldofcode.org/}.}
-
-\acknowledgments{The authors thank the World of Code team at the University of Tennessee, Knoxville, for providing access to the WoC infrastructure used for data extraction. During the preparation of this work, the authors used Claude (Anthropic) for automated diagram type classification (Claude Haiku~4.5) and for assistance with manuscript drafting and editing. The authors have reviewed and edited all AI-generated outputs and take full responsibility for the content of this publication.}
-
-\conflictsofinterest{The authors declare no conflicts of interest.}
+\section*{Conflicts of Interest}
+The authors declare no conflicts of interest.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\abbreviations{Abbreviations}{
+\section*{Abbreviations}
 The following abbreviations are used in this manuscript:
-\\
 
 \noindent
 \begin{tabular}{@{}ll}
@@ -482,22 +456,10 @@ DOI   & Digital Object Identifier \\
 SHA-1 & Secure Hash Algorithm 1 \\
 PNG   & Portable Network Graphics \\
 \end{tabular}
-}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\isPreprints{}{% This command is only used for ``preprints''.
-\begin{adjustwidth}{-\extralength}{0cm}
-%} % If the paper is ``preprints'', please uncomment this parenthesis.
-
-\reftitle{References}
-
 %=====================================
-% References: external bibliography
-%=====================================
-% \bibliography{references}
-
-%=====================================
-% References: internal bibliography
+% References
 %=====================================
 \begin{thebibliography}{999}
 
@@ -548,9 +510,4 @@ Zhang,~M.; Wang,~Y.; Shen,~Y.; Yang,~T.; Jiang,~C.; Wu,~Y.; Dou,~S.; Chen,~Q.; X
 
 \end{thebibliography}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\PublishersNote{}
-%\isPreprints{}{% This command is only used for ``preprints''.
-\end{adjustwidth}
-%} % If the paper is ``preprints'', please uncomment this parenthesis.
 \end{document}
