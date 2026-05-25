@@ -2,7 +2,7 @@
 """
 Figure 4: Connection Type Distribution
 
-Creates an MDPI-compliant horizontal bar chart showing the top 15
+Creates an publication-quality horizontal bar chart showing the top 15
 connection types used in PlantUML diagrams.
 """
 
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
 
-# MDPI specifications
+# Publication figure specifications
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
@@ -40,8 +40,8 @@ def load_data(data_path):
 
 
 def create_chart(by_type, total_connections):
-    """Create MDPI-compliant horizontal bar chart."""
-    # Set up matplotlib with MDPI specs
+    """Create publication-quality horizontal bar chart."""
+    # Set up matplotlib with publication figure specs
     plt.rcParams.update({
         'font.family': FONT_FAMILY,
         'font.size': MIN_FONT_SIZE,

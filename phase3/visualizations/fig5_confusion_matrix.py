@@ -2,7 +2,7 @@
 """
 Figure 5: Classification Confusion Matrix
 
-Creates an MDPI-compliant heatmap showing LLM classification accuracy
+Creates an publication-quality heatmap showing LLM classification accuracy
 across 9 UML diagram types (270 samples, 30 per type).
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 OUTPUT_PATH = Path(__file__).parent / "fig5_confusion_matrix.png"
 
-# MDPI specifications
+# Publication figure specifications
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4

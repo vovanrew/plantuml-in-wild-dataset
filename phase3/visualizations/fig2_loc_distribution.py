@@ -2,7 +2,7 @@
 """
 Figure 2: LOC (Lines of Code) Distribution Histogram
 
-Creates an MDPI-compliant histogram showing diagram size distribution
+Creates an publication-quality histogram showing diagram size distribution
 by lines of code for the Data paper.
 """
 
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from pathlib import Path
 
-# MDPI specifications
+# Publication figure specifications
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
@@ -37,8 +37,8 @@ def load_data(data_path):
 
 
 def create_histogram(distribution, median):
-    """Create MDPI-compliant histogram."""
-    # Set up matplotlib with MDPI specs
+    """Create publication-quality histogram."""
+    # Set up matplotlib with publication figure specs
     plt.rcParams.update({
         'font.family': FONT_FAMILY,
         'font.size': MIN_FONT_SIZE,

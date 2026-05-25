@@ -2,7 +2,7 @@
 """
 Figure 1: Type Distribution Bar Chart
 
-Creates an MDPI-compliant horizontal bar chart showing PlantUML diagram type distribution.
+Creates an publication-quality horizontal bar chart showing PlantUML diagram type distribution.
 """
 
 import json
@@ -13,7 +13,7 @@ from pathlib import Path
 
 OUTPUT_PATH = Path(__file__).parent / "fig1_type_distribution.png"
 
-# MDPI specifications
+# Publication figure specifications
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
@@ -55,7 +55,7 @@ def transform_data(type_dist):
     return transformed
 
 def create_chart(type_dist):
-    """Create MDPI-compliant horizontal bar chart."""
+    """Create publication-quality horizontal bar chart."""
     # Sort by count ascending (smallest at top)
     sorted_items = sorted(type_dist.items(), key=lambda x: x[1])
     types = [item[0] for item in sorted_items]
@@ -64,7 +64,7 @@ def create_chart(type_dist):
     # Calculate total for percentages
     total = sum(counts)
 
-    # Set up matplotlib for MDPI compliance
+    # Set up matplotlib for publication
     mpl.rcParams['font.family'] = 'Arial'
     mpl.rcParams['font.size'] = 9
 

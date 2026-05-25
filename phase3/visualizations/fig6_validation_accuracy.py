@@ -2,7 +2,7 @@
 """
 Figure 6: Per-Type Validation Accuracy
 
-Creates an MDPI-compliant grouped bar chart showing manual validation
+Creates an publication-quality grouped bar chart showing manual validation
 accuracy for classification, element counts, and connection counts
 across UML diagram types.
 
@@ -18,7 +18,7 @@ from pathlib import Path
 
 OUTPUT_PATH = Path(__file__).parent / "fig6_validation_accuracy.png"
 
-# MDPI specifications
+# Publication figure specifications
 DPI = 600
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
