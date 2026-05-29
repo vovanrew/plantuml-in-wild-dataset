@@ -13,7 +13,8 @@ import matplotlib.ticker as ticker
 from pathlib import Path
 
 # Publication figure specifications
-DPI = 600
+DPI_PNG = 600
+DPI_TIFF = 1000  # Data in Brief line-drawing requirement
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
 FIGURE_HEIGHT_INCHES = FIGURE_WIDTH_INCHES * 0.6  # Aspect ratio for histogram
@@ -22,7 +23,9 @@ MIN_FONT_SIZE = 8
 BAR_COLOR = '#4A90A4'
 
 # Paths
-OUTPUT_PATH = Path(__file__).parent / 'fig2_loc_distribution.png'
+OUTPUT_PNG = Path(__file__).parent / 'fig2_loc_distribution.png'
+OUTPUT_TIFF = Path(__file__).parent / 'fig2_loc_distribution.tif'
+OUTPUT_PDF = Path(__file__).parent / 'fig2_loc_distribution.pdf'
 
 
 def load_data(data_path):
@@ -117,18 +120,26 @@ def main():
     print("\nCreating histogram...")
     fig = create_histogram(distribution, median)
 
-    print(f"Saving to {OUTPUT_PATH} at {DPI} DPI...")
-    fig.savefig(OUTPUT_PATH, dpi=DPI, bbox_inches='tight',
+    print(f"Saving PNG to {OUTPUT_PNG}...")
+    fig.savefig(OUTPUT_PNG, dpi=DPI_PNG, format='png', bbox_inches='tight',
+                facecolor='white', edgecolor='none')
+    print(f"Saving TIFF to {OUTPUT_TIFF}...")
+    fig.savefig(OUTPUT_TIFF, dpi=DPI_TIFF, format='tiff', bbox_inches='tight',
+                facecolor='white', edgecolor='none',
+                pil_kwargs={'compression': 'tiff_lzw'})
+    print(f"Saving PDF to {OUTPUT_PDF}...")
+    fig.savefig(OUTPUT_PDF, format='pdf', bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close(fig)
 
     print("Done!")
 
     # Verification
-    if OUTPUT_PATH.exists():
-        size_mb = OUTPUT_PATH.stat().st_size / (1024 * 1024)
-        print(f"\nOutput file size: {size_mb:.2f} MB")
-        print("Verification: File created successfully")
+    print("\nOutputs:")
+    for path in (OUTPUT_PNG, OUTPUT_TIFF, OUTPUT_PDF):
+        if path.exists():
+            size_mb = path.stat().st_size / (1024 * 1024)
+            print(f"  {path.name}: {size_mb:.2f} MB")
 
 
 if __name__ == '__main__':

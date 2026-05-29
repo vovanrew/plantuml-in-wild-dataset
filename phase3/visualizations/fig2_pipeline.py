@@ -13,9 +13,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
-OUTPUT_PATH = Path(__file__).parent / "fig2_pipeline.png"
+OUTPUT_PNG = Path(__file__).parent / "fig2_pipeline.png"
+OUTPUT_TIFF = Path(__file__).parent / "fig2_pipeline.tif"
+OUTPUT_PDF = Path(__file__).parent / "fig2_pipeline.pdf"
 
-DPI = 600
+DPI_PNG = 600
+DPI_TIFF = 1000  # Data in Brief line-drawing requirement
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
 FIGURE_HEIGHT_INCHES = 7.5
@@ -146,11 +149,11 @@ def main():
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES))
 
     boxes = [
-        ("src",       "WoC version V lb2fFull basemaps (128 shards)", 9.4, PHASE_1_FILL),
+        ("src",       "WoC version V repositories", 9.4, PHASE_1_FILL),
         ("grep",      "Extension-based identification and deduplication", 8.2, BOX_FILL),
         ("valid",     "Content validation", 7.0, BOX_FILL),
         ("split",     "Multi-diagram splitting", 5.5, BOX_FILL),
-        ("compile",   "PlantUML v1.2025.9 compilation", 4.3, BOX_FILL),
+        ("compile",   "PlantUML compilation", 4.3, BOX_FILL),
         ("classify",  "LLM classification and filtering", 2.8, BOX_FILL),
         ("extract",   "Element and connection extraction", 1.6, BOX_FILL),
         ("final",     "143,427 UML diagrams", 0.4, RESULT_FILL),
@@ -197,15 +200,31 @@ def main():
 
     plt.tight_layout(pad=0.1)
     fig.savefig(
-        OUTPUT_PATH,
-        dpi=DPI,
+        OUTPUT_PNG,
+        dpi=DPI_PNG,
         format="png",
         bbox_inches="tight",
         facecolor="white",
         edgecolor="none",
     )
+    fig.savefig(
+        OUTPUT_TIFF,
+        dpi=DPI_TIFF,
+        format="tiff",
+        bbox_inches="tight",
+        facecolor="white",
+        edgecolor="none",
+        pil_kwargs={"compression": "tiff_lzw"},
+    )
+    fig.savefig(
+        OUTPUT_PDF,
+        format="pdf",
+        bbox_inches="tight",
+        facecolor="white",
+        edgecolor="none",
+    )
     plt.close(fig)
-    print(f"Saved {OUTPUT_PATH}")
+    print(f"Saved {OUTPUT_PNG}, {OUTPUT_TIFF}, {OUTPUT_PDF}")
 
 
 if __name__ == "__main__":

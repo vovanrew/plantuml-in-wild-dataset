@@ -134,7 +134,7 @@ If you use this dataset, please cite:
 ### Dataset
 ```bibtex
 @dataset{uml_in_the_wild_2026,
-  author    = {Polischuk, Volodymyr},
+  author    = {Polishchuk, Volodymyr},
   title     = {{UML-in-the-Wild: A Dataset of UML Diagrams in PlantUML
                Notation from Open-Source Repositories}},
   year      = {2026},
@@ -147,7 +147,7 @@ If you use this dataset, please cite:
 ### Extraction Tool
 ```bibtex
 @software{plantuml_stats_extractor_2026,
-  author    = {Polischuk, Volodymyr},
+  author    = {Polishchuk, Volodymyr},
   title     = {{PlantUML 1.2025.9 with DiagramStatsExtractor}},
   year      = {2026},
   publisher = {Zenodo},

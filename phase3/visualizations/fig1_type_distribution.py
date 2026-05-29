@@ -11,10 +11,13 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pathlib import Path
 
-OUTPUT_PATH = Path(__file__).parent / "fig1_type_distribution.png"
+OUTPUT_PNG = Path(__file__).parent / "fig1_type_distribution.png"
+OUTPUT_TIFF = Path(__file__).parent / "fig1_type_distribution.tif"
+OUTPUT_PDF = Path(__file__).parent / "fig1_type_distribution.pdf"
 
 # Publication figure specifications
-DPI = 600
+DPI_PNG = 600
+DPI_TIFF = 1000  # Data in Brief line-drawing requirement
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
 FIGURE_HEIGHT_INCHES = 4.5
@@ -133,18 +136,33 @@ def main():
     print("Creating horizontal bar chart...")
     fig, total = create_chart(type_dist)
 
-    # 4. Save at 600 DPI
-    print(f"Saving figure to {OUTPUT_PATH}...")
-    fig.savefig(OUTPUT_PATH, dpi=DPI, format='png', bbox_inches='tight',
+    # 4. Save in three formats.
+    # PNG (600 DPI) is kept for the standalone-article manuscript
+    # (manuscript_tex/manuscript.tex \includegraphics reference).
+    # TIFF (1000 DPI, LZW) is for embedding in the DiB .docx
+    # manuscript and meets the journal's line-drawing resolution
+    # requirement (full-page-width 7480 px minimum).
+    # PDF is the vector format uploaded as the separate artwork
+    # file at DiB submission (matplotlib embeds fonts by default).
+    print(f"Saving PNG to {OUTPUT_PNG}...")
+    fig.savefig(OUTPUT_PNG, dpi=DPI_PNG, format='png', bbox_inches='tight',
+                facecolor='white', edgecolor='none')
+    print(f"Saving TIFF to {OUTPUT_TIFF}...")
+    fig.savefig(OUTPUT_TIFF, dpi=DPI_TIFF, format='tiff', bbox_inches='tight',
+                facecolor='white', edgecolor='none',
+                pil_kwargs={'compression': 'tiff_lzw'})
+    print(f"Saving PDF to {OUTPUT_PDF}...")
+    fig.savefig(OUTPUT_PDF, format='pdf', bbox_inches='tight',
                 facecolor='white', edgecolor='none')
     plt.close(fig)
 
     # Print verification info
     print(f"\nVerification:")
-    print(f"  - Output file: {OUTPUT_PATH}")
+    print(f"  - PNG output : {OUTPUT_PNG} ({DPI_PNG} DPI)")
+    print(f"  - TIFF output: {OUTPUT_TIFF} ({DPI_TIFF} DPI, LZW)")
+    print(f"  - PDF output : {OUTPUT_PDF} (vector)")
     print(f"  - Number of types: {len(type_dist)}")
     print(f"  - Total diagrams: {total:,}")
-    print(f"  - DPI: {DPI}")
 
     # Print type breakdown
     print(f"\nType breakdown:")
