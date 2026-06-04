@@ -35,9 +35,10 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 Image.MAX_IMAGE_PIXELS = None
+PngImagePlugin.MAX_TEXT_CHUNK = 100 * 1024 * 1024
 warnings.simplefilter("ignore", Image.DecompressionBombWarning)
 
 
