@@ -21,7 +21,7 @@ DPI_PNG = 600
 DPI_TIFF = 1000  # Data in Brief line-drawing requirement
 FIGURE_WIDTH_MM = 180
 FIGURE_WIDTH_INCHES = FIGURE_WIDTH_MM / 25.4
-FIGURE_HEIGHT_INCHES = 7.5
+FIGURE_HEIGHT_INCHES = 8.5
 
 PHASE_1_FILL = "#E8F0F8"
 PHASE_2_FILL = "#E8F5E8"
@@ -149,19 +149,20 @@ def main():
     fig, ax = plt.subplots(figsize=(FIGURE_WIDTH_INCHES, FIGURE_HEIGHT_INCHES))
 
     boxes = [
-        ("src",       "WoC version V repositories", 9.4, PHASE_1_FILL),
-        ("grep",      "Extension-based identification and deduplication", 8.2, BOX_FILL),
-        ("valid",     "Content validation", 7.0, BOX_FILL),
-        ("split",     "Multi-diagram splitting", 5.5, BOX_FILL),
-        ("compile",   "PlantUML compilation", 4.3, BOX_FILL),
-        ("classify",  "LLM classification and filtering", 2.8, BOX_FILL),
-        ("extract",   "Element and connection extraction", 1.6, BOX_FILL),
-        ("final",     "143,427 UML diagrams", 0.4, RESULT_FILL),
+        ("src",         "WoC version V repositories", 9.4, PHASE_1_FILL),
+        ("grep",        "Extension-based identification and deduplication", 8.2, BOX_FILL),
+        ("valid",       "Content validation", 7.0, BOX_FILL),
+        ("split",       "Multi-diagram splitting", 5.5, BOX_FILL),
+        ("compile",     "PlantUML compilation", 4.3, BOX_FILL),
+        ("postprocess", "Image normalization", 3.1, BOX_FILL),
+        ("classify",    "LLM classification and filtering", 1.6, BOX_FILL),
+        ("extract",     "Element and connection extraction", 0.4, BOX_FILL),
+        ("final",       "143,427 UML diagrams", -0.8, RESULT_FILL),
     ]
 
     draw_phase_bg(ax, y_top=9.4, y_bot=7.0, color=PHASE_1_FILL, label="Phase 1: Data Extraction")
-    draw_phase_bg(ax, y_top=5.5, y_bot=4.3, color=PHASE_2_FILL, label="Phase 2: Compilation")
-    draw_phase_bg(ax, y_top=2.8, y_bot=0.4, color=PHASE_3_FILL, label="Phase 3: Classification & Analysis")
+    draw_phase_bg(ax, y_top=5.5, y_bot=3.1, color=PHASE_2_FILL, label="Phase 2: Compilation")
+    draw_phase_bg(ax, y_top=1.6, y_bot=-0.8, color=PHASE_3_FILL, label="Phase 3: Classification & Analysis")
 
     positions = {}
     for key, label, y, fill in boxes:
@@ -170,13 +171,14 @@ def main():
         draw_box(ax, 0.0, y, label, fill=fill, bold=bold)
 
     flow = [
-        ("src",      "grep",     None),
-        ("grep",     "valid",    "367,550"),
-        ("valid",    "split",    "202,106"),
-        ("split",    "compile",  "209,122"),
-        ("compile",  "classify", "163,946"),
-        ("classify", "extract",  "143,427"),
-        ("extract",  "final",    None),
+        ("src",         "grep",        None),
+        ("grep",        "valid",       "367,550"),
+        ("valid",       "split",       "202,106"),
+        ("split",       "compile",     "209,122"),
+        ("compile",     "postprocess", None),
+        ("postprocess", "classify",    "163,946"),
+        ("classify",    "extract",     "143,427"),
+        ("extract",     "final",       None),
     ]
     for a, b, count in flow:
         ax_x, ax_y = positions[a]
@@ -194,7 +196,7 @@ def main():
         draw_exclusion(ax, x1=BOX_W / 2, y=y, label=label)
 
     ax.set_xlim(-BOX_W / 2 - 0.8, BOX_W / 2 + 3.8)
-    ax.set_ylim(-0.2, 9.95)
+    ax.set_ylim(-1.4, 9.95)
     ax.set_aspect("equal", adjustable="datalim")
     ax.axis("off")
 
