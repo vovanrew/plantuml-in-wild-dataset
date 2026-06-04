@@ -152,7 +152,7 @@ def main():
         ("src",         "WoC version V repositories", 9.4, PHASE_1_FILL),
         ("grep",        "Extension-based identification and deduplication", 8.2, BOX_FILL),
         ("valid",       "Content validation", 7.0, BOX_FILL),
-        ("split",       "Multi-diagram splitting", 5.5, BOX_FILL),
+        ("split",       "Diagram file normalization", 5.5, BOX_FILL),
         ("compile",     "PlantUML compilation", 4.3, BOX_FILL),
         ("postprocess", "Image normalization", 3.1, BOX_FILL),
         ("classify",    "LLM classification and filtering", 1.6, BOX_FILL),
@@ -189,7 +189,7 @@ def main():
         ("valid",    "165,444 invalid"),
         ("split",    "+7,016 from splits"),
         ("compile",  "45,176 errors"),
-        ("classify", "20,519 non-UML"),
+        ("classify", "20,519 dropped"),
     ]
     for key, label in exclusions:
         _, y = positions[key]
