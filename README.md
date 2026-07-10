@@ -4,14 +4,14 @@
 
 ![UML-in-the-Wild: 143,427 UML diagrams from open-source repositories via World of Code](assets/graphical_abstract.png)
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18952372.svg)](https://doi.org/10.5281/zenodo.18952372)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20537143.svg)](https://doi.org/10.5281/zenodo.20537143)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
 
 ## Overview
 
 UML-in-the-Wild is a dataset of **143,427 UML diagrams** extracted from open-source repositories via the [World of Code](https://worldofcode.org/) (WoC) infrastructure. Each diagram is provided as both PlantUML source code and a rendered PNG image, accompanied by metadata including diagram type, structural element and connection counts, and source repository attribution.
 
-**Download the dataset**: [Zenodo (DOI: 10.5281/zenodo.18952372)](https://doi.org/10.5281/zenodo.18952372)
+**Download the dataset**: [Zenodo (DOI: 10.5281/zenodo.20537143)](https://doi.org/10.5281/zenodo.20537143)
 
 This repository contains the extraction pipeline, classification scripts, and methodology documentation used to construct the dataset. For the accompanying data descriptor paper [TBD].
 
@@ -139,8 +139,8 @@ If you use this dataset, please cite:
                Notation from Open-Source Repositories}},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.18952372},
-  url       = {https://doi.org/10.5281/zenodo.18952372}
+  doi       = {10.5281/zenodo.20537143},
+  url       = {https://doi.org/10.5281/zenodo.20537143}
 }
 ```
 
